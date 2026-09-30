@@ -31,3 +31,4 @@
 .admin__options { flex: 1 1 100%; }
 .admin__addfield { margin-top: 16px; }
 @media (max-width: 760px) { .admin__body { grid-template-columns: 1fr; } }
+.admin__preview { display: block; width: 140px; aspect-ratio: 2 / 3; object-fit: cover; margin-top: 12px; border: 1px solid var(--line); border-radius: 8px; }

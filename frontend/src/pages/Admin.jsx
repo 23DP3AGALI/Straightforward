@@ -107,9 +107,22 @@ export default function Admin() {
                   onChange={(e) => updateGame({ name: e.target.value })}
                 />
               </label>
-              <p className="admin__hint">
-                Card image: put the file at <code>frontend/public/games/{selected.id}.jpg</code>
-              </p>
+              <label className="admin__label">
+                Card image URL (max 500)
+                <input
+                  value={selected.image || ""}
+                  maxLength={500}
+                  placeholder="https://example.com/game.jpg"
+                  onChange={(e) => updateGame({ image: e.target.value.trim() })}
+                />
+              </label>
+              {selected.image && (
+                <img
+                  className="admin__preview"
+                  src={selected.image}
+                  alt={`${selected.name} preview`}
+                />
+              )}
 
               <h2>Profile form fields</h2>
               {selected.fields.length === 0 && (

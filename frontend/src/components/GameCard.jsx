@@ -6,6 +6,8 @@ import "./GameCard.css";
 export default function GameCard({ game }) {
   const [flipped, setFlipped] = useState(false);
   const navigate = useNavigate();
+  // Картинка из админ-панели (URL); если не задана, берём public/games/<id>.jpg
+  const imageUrl = (game.image || `/games/${game.id}.jpg`).replace(/"/g, "%22");
 
   const handleFind = (e) => {
     e.stopPropagation();
@@ -18,7 +20,7 @@ export default function GameCard({ game }) {
   return (
     <div
       className={`gcard ${flipped ? "gcard--flipped" : ""}`}
-      style={{ "--img": `url(/games/${game.id}.jpg)` }}
+      style={{ "--img": `url("${imageUrl}")` }}
       onClick={() => setFlipped((f) => !f)}
     >
       <div className="gcard__inner">
