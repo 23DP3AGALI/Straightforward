@@ -1,0 +1,80 @@
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  padding: 16px clamp(16px, 4vw, 48px);
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+}
+
+.nav__brand {
+  justify-self: start;
+  font-family: "Big Shoulders Display", sans-serif;
+  font-weight: 900;
+  font-size: 1.8rem;
+  letter-spacing: 0.04em;
+  color: var(--red);
+}
+
+.nav__links {
+  display: flex;
+  gap: clamp(12px, 3vw, 36px);
+}
+
+.nav__link {
+  color: var(--muted);
+  font-weight: 600;
+  padding: 6px 2px;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.nav__link:hover {
+  color: var(--ink);
+  border-color: var(--red);
+}
+
+.nav__auth {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.nav__register {
+  padding: 8px 18px;
+  border: 1px solid var(--red);
+  border-radius: 4px;
+  font-weight: 700;
+  color: var(--ink);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.nav__register:hover {
+  background: var(--red);
+  box-shadow: 0 0 18px var(--red-glow);
+}
+
+@media (max-width: 820px) {
+  .nav {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "brand auth"
+      "links links";
+  }
+  .nav__brand {
+    grid-area: brand;
+  }
+  .nav__auth {
+    grid-area: auth;
+  }
+  .nav__links {
+    grid-area: links;
+    justify-content: center;
+  }
+}

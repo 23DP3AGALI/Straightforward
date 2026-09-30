@@ -1,0 +1,33 @@
+.admin { min-height: 100vh; padding: 24px clamp(16px, 4vw, 48px) 60px; }
+.admin__top { display: flex; align-items: baseline; gap: 24px; border-bottom: 1px solid var(--line); padding-bottom: 16px; }
+.admin__top h1 { margin: 0; font-family: "Big Shoulders Display", sans-serif; font-weight: 900; font-size: 2.4rem; color: var(--red); }
+.admin__back { color: var(--muted); border-bottom: 1px solid var(--red); }
+.admin__body { display: grid; grid-template-columns: 280px 1fr; gap: 32px; margin-top: 24px; }
+.admin h2 { margin: 0 0 12px; font-size: 1.1rem; }
+.admin input, .admin select {
+  padding: 8px 10px; background: #0d0d0d; color: var(--ink);
+  border: 1px solid var(--line); border-radius: 4px; font: inherit; min-width: 0;
+}
+.admin input:focus, .admin select:focus { outline: none; border-color: var(--red); }
+.admin__add { display: flex; gap: 8px; margin-bottom: 16px; }
+.admin__add input { flex: 1; }
+.admin button { font: inherit; cursor: pointer; }
+.admin__add button, .admin__addfield {
+  padding: 8px 14px; background: var(--red); color: #fff; font-weight: 700; border: 0; border-radius: 4px;
+}
+.admin__list ul { list-style: none; margin: 0; padding: 0; }
+.admin__list li { display: flex; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.admin__list li.is-active { background: rgba(229, 32, 43, 0.15); }
+.admin__pick { flex: 1; text-align: left; padding: 10px 8px; background: none; border: 0; color: var(--ink); }
+.admin__del { background: none; border: 0; color: var(--muted); font-size: 1.3rem; padding: 0 10px; }
+.admin__del:hover { color: var(--red); }
+.admin__label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; max-width: 420px; }
+.admin__hint { color: var(--muted); font-size: 0.9rem; }
+.admin__hint code { color: var(--ink); }
+.admin__editor h2 { margin-top: 28px; }
+.admin__field { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.admin__field > input:first-child { flex: 1 1 200px; }
+.admin__check { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.admin__options { flex: 1 1 100%; }
+.admin__addfield { margin-top: 16px; }
+@media (max-width: 760px) { .admin__body { grid-template-columns: 1fr; } }

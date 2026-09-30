@@ -1,0 +1,40 @@
+.cp {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 40px 20px 80px;
+}
+.cp__link { color: var(--muted); border-bottom: 1px solid var(--red); }
+.cp__title {
+  margin: 24px 0 0;
+  font-family: "Big Shoulders Display", sans-serif;
+  font-weight: 900;
+  font-size: 3rem;
+}
+.cp__sub { margin: 4px 0 28px; color: var(--muted); }
+.cp__form { display: flex; flex-direction: column; gap: 18px; }
+.cp__form label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; }
+.cp__form input,
+.cp__form select,
+.cp__form textarea {
+  padding: 10px 12px;
+  background: #0d0d0d;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font: inherit;
+}
+.cp__form input:focus,
+.cp__form select:focus,
+.cp__form textarea:focus { outline: none; border-color: var(--red); }
+.cp__error { margin: 0; color: #ff6b73; }
+.cp__submit {
+  padding: 12px;
+  background: var(--red);
+  color: #fff;
+  font: 700 1rem "Manrope", sans-serif;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  box-shadow: 0 0 22px var(--red-glow);
+}
+.cp__submit:hover { background: #ff2f3b; }
