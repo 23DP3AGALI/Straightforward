@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { logout } from "../services/auth";
 import { getGames, saveGames, slugify } from "../services/store";
 import "./Admin.css";
 
@@ -9,7 +10,12 @@ const TYPES = [
   { value: "select", label: "Choice from list" },
 ];
 
+function createFieldId() {
+  return `f${Date.now()}`;
+}
+
 export default function Admin() {
+  const navigate = useNavigate();
   const [games, setGames] = useState(getGames);
   const [selectedId, setSelectedId] = useState(null);
   const [newName, setNewName] = useState("");
@@ -45,7 +51,7 @@ export default function Admin() {
     updateGame({
       fields: [
         ...selected.fields,
-        { id: `f${Date.now()}`, name: "", type: "text", required: false, options: "" },
+        { id: createFieldId(), name: "", type: "text", required: false, options: "" },
       ],
     });
 
@@ -62,6 +68,15 @@ export default function Admin() {
       <header className="admin__top">
         <Link to="/app" className="admin__back">Back to site</Link>
         <h1>Admin panel</h1>
+        <button
+          className="admin__back"
+          onClick={() => {
+            logout();
+            navigate("/login");
+          }}
+        >
+          Sign out
+        </button>
       </header>
 
       <div className="admin__body">

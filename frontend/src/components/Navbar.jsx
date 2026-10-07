@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { getCurrentUser, logout } from "../services/auth";
 import "./Navbar.css";
 
 const links = [
@@ -9,6 +10,14 @@ const links = [
 ];
 
 export default function Navbar() {
+  const navigate = useNavigate();
+  const user = getCurrentUser();
+
+  const signOut = () => {
+    logout();
+    navigate("/login");
+  };
+
   return (
     <header className="nav">
       <Link to="/" className="nav__brand" aria-label="StraightForward home">
@@ -24,12 +33,20 @@ export default function Navbar() {
       </nav>
 
       <div className="nav__auth">
-        <Link to="/login" className="nav__link">
-          Login
-        </Link>
-        <Link to="/register" className="nav__register">
-          Register
-        </Link>
+        {user ? (
+          <>
+            <span className="nav__link">{user.nick}</span>
+            {user.isAdmin && <Link to="/admin" className="nav__link">Admin</Link>}
+            <button type="button" className="nav__link nav__logout" onClick={signOut}>
+              Sign out
+            </button>
+          </>
+        ) : (
+          <>
+            <Link to="/login" className="nav__link">Login</Link>
+            <Link to="/register" className="nav__register">Register</Link>
+          </>
+        )}
       </div>
     </header>
   );
