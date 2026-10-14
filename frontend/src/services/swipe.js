@@ -74,6 +74,7 @@ export function getFeed(gameId) {
       userId: String(p.userId),
       nick: user.nick,
       about: p.about,
+      photo: p.photo || "",
       values: p.values || {},
       demo: false,
     }));
@@ -129,9 +130,9 @@ export function resetReactions(gameId) {
 // Анкета игрока в конкретной игре: { about, values }
 function profileOf(gameId, userId) {
   const demo = DEMO.find((d) => same(d.userId, userId));
-  if (demo) return { about: demo.about, values: {} };
+  if (demo) return { about: demo.about, photo: "", values: {} };
   const p = getProfilesOfGame(gameId).find((x) => same(x.userId, userId));
-  return { about: p?.about ?? "", values: p?.values ?? {} };
+  return { about: p?.about ?? "", photo: p?.photo ?? "", values: p?.values ?? {} };
 }
 
 // Отклонить игрока, который лайкнул меня (уведомление пропадёт)

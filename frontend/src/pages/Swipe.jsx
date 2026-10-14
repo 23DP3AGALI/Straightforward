@@ -10,6 +10,12 @@ import "./Swipe.css";
 
 const EXIT_MS = 380;
 
+// Фон для анкет без фото: красный градиент, оттенок зависит от id игрока
+function fallbackBg(seed) {
+  const sum = [...String(seed)].reduce((n, c) => n + c.charCodeAt(0), 0);
+  return `linear-gradient(160deg, hsl(${(sum % 40) - 10} 75% 30%), #050000)`;
+}
+
 export default function Swipe() {
   const { gameId } = useParams();
   const game = getGame(gameId);
@@ -75,22 +81,35 @@ export default function Swipe() {
               key={current.userId}
               className={`scard ${exit ? `scard--${exit}` : "scard--in"}`}
             >
-              <div className="scard__avatar" aria-hidden="true">
-                {current.nick.charAt(0).toUpperCase()}
+              <div
+                className="scard__photo"
+                style={{ backgroundImage: current.photo ? `url("${current.photo}")` : fallbackBg(current.userId) }}
+              >
+                {!current.photo && (
+                  <span className="scard__letter" aria-hidden="true">
+                    {current.nick.charAt(0).toUpperCase()}
+                  </span>
+                )}
+                <span className="scard__game">{game.name}</span>
+                <div className="scard__head">
+                  <h2 className="scard__nick">{current.nick}</h2>
+                  {current.demo && <p className="scard__demo">Demo player</p>}
+                </div>
               </div>
-              <h2 className="scard__nick">{current.nick}</h2>
-              {current.demo && <p className="scard__demo">Demo player</p>}
-              <p className="scard__about">{current.about}</p>
-              {rows.length > 0 && (
-                <dl className="scard__fields">
-                  {rows.map((r) => (
-                    <div key={r.id}>
-                      <dt>{r.name}</dt>
-                      <dd>{r.value}</dd>
-                    </div>
-                  ))}
-                </dl>
-              )}
+
+              <div className="scard__info">
+                <p className="scard__about">{current.about}</p>
+                {rows.length > 0 && (
+                  <ul className="scard__chips">
+                    {rows.map((r) => (
+                      <li key={r.id}>
+                        <span>{r.name}</span>
+                        <strong>{r.value}</strong>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </article>
 
             <div className="sw__actions">

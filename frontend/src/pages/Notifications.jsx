@@ -54,7 +54,11 @@ export default function Notifications() {
                 </p>
 
                 <div className="nt__profile">
-                  <div className="nt__avatar" aria-hidden="true">{n.nick.charAt(0).toUpperCase()}</div>
+                  {n.photo ? (
+                    <img className="nt__avatar nt__avatar--photo" src={n.photo} alt="" />
+                  ) : (
+                    <div className="nt__avatar" aria-hidden="true">{n.nick.charAt(0).toUpperCase()}</div>
+                  )}
                   <div className="nt__body">
                     <p className="nt__about">{n.about || "No description."}</p>
                     {rows.length > 0 && (

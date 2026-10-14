@@ -24,10 +24,9 @@
 }
 
 .scard {
-  width: min(380px, 100%);
-  min-height: 380px;
-  padding: 32px 26px;
-  text-align: center;
+  width: min(400px, 100%);
+  overflow: hidden;
+  text-align: left;
   background: linear-gradient(180deg, #160506, #080808);
   border: 1px solid var(--line);
   border-radius: 16px;
@@ -52,25 +51,51 @@
   to { opacity: 0; transform: translateY(40px) scale(0.9); }
 }
 
-.scard__avatar {
-  display: inline-flex;
+.scard__photo {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  height: clamp(260px, 44vh, 430px);
+  background-size: cover;
+  background-position: center;
+}
+.scard__photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(12, 3, 4, 0.96) 0%, rgba(12, 3, 4, 0) 55%);
+}
+.scard__letter {
+  position: absolute;
+  inset: 0;
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 84px;
-  height: 84px;
-  margin-bottom: 14px;
-  font: 900 2.4rem "Big Shoulders Display", sans-serif;
-  background: var(--red-deep);
-  border: 2px solid var(--red);
-  border-radius: 50%;
+  font: 900 7rem "Big Shoulders Display", sans-serif;
+  color: rgba(255, 255, 255, 0.85);
 }
-.scard__nick { margin: 0; font-family: "Big Shoulders Display", sans-serif; font-weight: 900; font-size: 2.4rem; }
-.scard__demo { margin: 2px 0 0; font-size: 0.8rem; color: var(--muted); }
-.scard__about { margin: 16px 0 0; color: var(--muted); }
-.scard__fields { margin: 20px 0 0; display: flex; flex-direction: column; gap: 8px; text-align: left; }
-.scard__fields div { display: flex; justify-content: space-between; gap: 12px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); }
-.scard__fields dt { color: var(--muted); }
-.scard__fields dd { margin: 0; font-weight: 600; }
+.scard__game {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 1;
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid var(--red);
+  border-radius: 14px;
+  backdrop-filter: blur(4px);
+}
+.scard__head { position: relative; z-index: 1; padding: 18px 22px; }
+.scard__nick { margin: 0; font-family: "Big Shoulders Display", sans-serif; font-weight: 900; font-size: 2.6rem; line-height: 1; }
+.scard__demo { margin: 4px 0 0; font-size: 0.8rem; color: var(--muted); }
+.scard__info { padding: 16px 22px 22px; }
+.scard__about { margin: 0; opacity: 0.88; overflow-wrap: anywhere; }
+.scard__chips { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.scard__chips li { display: flex; flex-direction: column; padding: 6px 12px; line-height: 1.25; background: rgba(229, 32, 43, 0.12); border: 1px solid var(--line); border-radius: 10px; }
+.scard__chips span { font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.scard__chips strong { font-size: 0.95rem; }
 
 .sw__actions { display: flex; align-items: center; gap: 22px; margin-top: 32px; }
 .act {

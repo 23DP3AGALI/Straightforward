@@ -25,3 +25,4 @@
 .nt__actions { display: flex; gap: 10px; }
 .nt__btn--pass { color: var(--muted); border: 1px solid var(--line); }
 .nt__btn--pass:hover { color: var(--ink); border-color: var(--red); }
+.nt__avatar--photo { object-fit: cover; }
