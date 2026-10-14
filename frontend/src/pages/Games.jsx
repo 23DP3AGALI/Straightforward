@@ -1,13 +1,14 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import GameCard from "../components/GameCard";
-import { getCurrentUser, logout } from "../services/auth";
+import NotificationBell from "../components/NotificationBell";
+import ProfileMenu from "../components/ProfileMenu";
+import { getCurrentUser } from "../services/auth";
 import { getGames } from "../services/store";
 import "./Games.css";
 
 export default function Games() {
   const games = getGames();
   const user = getCurrentUser();
-  const navigate = useNavigate();
 
   return (
     <>
@@ -16,19 +17,10 @@ export default function Games() {
           SF
         </Link>
         <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          {user?.isAdmin && <Link to="/admin" className="gh__login">Admin</Link>}
           {user ? (
             <>
-              <span className="gh__login">{user.nick}</span>
-              <button
-                className="gh__login"
-                onClick={() => {
-                  logout();
-                  navigate("/login");
-                }}
-              >
-                Sign out
-              </button>
+              <NotificationBell />
+              <ProfileMenu user={user} />
             </>
           ) : (
             <Link to="/login" className="gh__login">Login</Link>

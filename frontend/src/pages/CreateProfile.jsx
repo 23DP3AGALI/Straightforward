@@ -1,17 +1,22 @@
 import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
+import { getCurrentUser } from "../services/auth";
 import { getGame } from "../services/store";
-import { saveProfile } from "../services/profiles";
+import { getProfile, saveProfile } from "../services/profiles";
 import "./CreateProfile.css";
 
-export default function CreateProfile() {
+export default function CreateProfile({ edit = false }) {
   const { gameId } = useParams();
   const navigate = useNavigate();
   const game = getGame(gameId);
 
-  const [about, setAbout] = useState("");
-  const [values, setValues] = useState({});
+  const existing = getProfile(gameId);
+  const [about, setAbout] = useState(existing?.about ?? "");
+  const [values, setValues] = useState(existing?.values ?? {});
   const [error, setError] = useState("");
+
+  if (!getCurrentUser()) return <Navigate to="/login" replace />;
+  if (edit && !existing) return <Navigate to="/app/profiles" replace />;
 
   if (!game) {
     return (
@@ -31,14 +36,16 @@ export default function CreateProfile() {
     if (missing) return setError(`Fill in the required field: ${missing.name || "unnamed field"}.`);
 
     saveProfile(game.id, { about: about.trim(), values });
-    navigate(`/app/${game.id}/swipe`);
+    navigate(edit ? "/app/profiles" : `/app/${game.id}/swipe`);
   };
 
   return (
     <div className="cp">
-      <Link to="/app" className="cp__link">Back to games</Link>
+      <Link to={edit ? "/app/profiles" : "/app"} className="cp__link">
+        {edit ? "Back to my profiles" : "Back to games"}
+      </Link>
       <h1 className="cp__title">{game.name}</h1>
-      <p className="cp__sub">Create your profile for this game.</p>
+      <p className="cp__sub">{edit ? "Edit your profile for this game." : "Create your profile for this game."}</p>
 
       <form className="cp__form" onSubmit={submit}>
         <label>

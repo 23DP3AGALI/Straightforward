@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { getCurrentUser } from "../services/auth";
 import { hasProfile } from "../services/profiles";
 import "./GameCard.css";
 
@@ -11,6 +12,7 @@ export default function GameCard({ game }) {
 
   const handleFind = (e) => {
     e.stopPropagation();
+    if (!getCurrentUser()) return navigate("/login");
     // Есть анкета для этой игры -> свайпы, нет -> создание анкеты
     navigate(
       hasProfile(game.id) ? `/app/${game.id}/swipe` : `/app/${game.id}/create`

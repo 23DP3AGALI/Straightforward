@@ -88,3 +88,8 @@ export function getCurrentUser() {
 export function logout() {
   localStorage.removeItem(SESSION_KEY);
 }
+
+export function getUserById(id) {
+  const user = readUsers().find((u) => String(u.id) === String(id));
+  return user ? publicUser(user) : null;
+}

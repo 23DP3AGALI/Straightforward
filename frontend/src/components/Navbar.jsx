@@ -1,5 +1,6 @@
-import { Link, useNavigate } from "react-router-dom";
-import { getCurrentUser, logout } from "../services/auth";
+import { Link } from "react-router-dom";
+import { getCurrentUser } from "../services/auth";
+import ProfileMenu from "./ProfileMenu";
 import "./Navbar.css";
 
 const links = [
@@ -10,13 +11,7 @@ const links = [
 ];
 
 export default function Navbar() {
-  const navigate = useNavigate();
   const user = getCurrentUser();
-
-  const signOut = () => {
-    logout();
-    navigate("/login");
-  };
 
   return (
     <header className="nav">
@@ -34,13 +29,7 @@ export default function Navbar() {
 
       <div className="nav__auth">
         {user ? (
-          <>
-            <span className="nav__link">{user.nick}</span>
-            {user.isAdmin && <Link to="/admin" className="nav__link">Admin</Link>}
-            <button type="button" className="nav__link nav__logout" onClick={signOut}>
-              Sign out
-            </button>
-          </>
+          <ProfileMenu user={user} />
         ) : (
           <>
             <Link to="/login" className="nav__link">Login</Link>

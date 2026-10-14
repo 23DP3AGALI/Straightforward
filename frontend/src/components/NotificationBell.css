@@ -1,0 +1,21 @@
+.bell {
+  position: relative;
+  display: inline-flex;
+  color: var(--muted);
+  transition: color 0.2s;
+}
+.bell:hover { color: var(--ink); }
+.bell__badge {
+  position: absolute;
+  top: -7px;
+  right: -9px;
+  min-width: 17px;
+  padding: 0 4px;
+  background: var(--red);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+  border-radius: 9px;
+}
