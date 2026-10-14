@@ -8,3 +8,20 @@
 .nt__text { margin: 0; }
 .nt__meta { margin: 4px 0 0; font-size: 0.85rem; color: var(--muted); }
 .nt__match { margin-left: 10px; padding: 1px 8px; color: #2ecc71; border: 1px solid #2ecc71; border-radius: 10px; font-size: 0.75rem; }
+.nt__actions { margin-top: 12px; }
+.nt__btn { display: inline-block; padding: 8px 18px; font: 700 0.9rem "Manrope", sans-serif; border-radius: 4px; cursor: pointer; background: none; }
+.nt__btn--like { color: #2ecc71; border: 1px solid #2ecc71; }
+.nt__btn--like:hover { background: #2ecc71; color: #000; }
+.nt__btn--chat { color: #fff; background: var(--red); border: 1px solid var(--red); }
+.nt__btn--chat:hover { background: #ff2f3b; }
+.nt__profile { display: flex; gap: 14px; margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.08); }
+.nt__avatar { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; font: 900 1.5rem "Big Shoulders Display", sans-serif; background: var(--red-deep); border: 2px solid var(--red); border-radius: 50%; }
+.nt__body { flex: 1; min-width: 0; }
+.nt__about { margin: 0; color: var(--muted); overflow-wrap: anywhere; }
+.nt__fields { margin: 12px 0 0; display: flex; flex-direction: column; gap: 6px; }
+.nt__fields div { display: flex; justify-content: space-between; gap: 12px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.06); }
+.nt__fields dt { color: var(--muted); }
+.nt__fields dd { margin: 0; font-weight: 600; }
+.nt__actions { display: flex; gap: 10px; }
+.nt__btn--pass { color: var(--muted); border: 1px solid var(--line); }
+.nt__btn--pass:hover { color: var(--ink); border-color: var(--red); }

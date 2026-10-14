@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import GameCard from "../components/GameCard";
+import ChatLink from "../components/ChatLink";
 import NotificationBell from "../components/NotificationBell";
 import ProfileMenu from "../components/ProfileMenu";
 import { getCurrentUser } from "../services/auth";
@@ -19,6 +20,7 @@ export default function Games() {
         <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
           {user ? (
             <>
+              <ChatLink />
               <NotificationBell />
               <ProfileMenu user={user} />
             </>

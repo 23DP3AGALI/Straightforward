@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
+import ChatLink from "../components/ChatLink";
 import NotificationBell from "../components/NotificationBell";
 import { getCurrentUser } from "../services/auth";
 import { hasProfile } from "../services/profiles";
@@ -15,6 +16,7 @@ export default function Swipe() {
   const [feed, setFeed] = useState(() => getFeed(gameId));
   const [index, setIndex] = useState(0);
   const [exit, setExit] = useState(null);
+  const [match, setMatch] = useState(null);
   const timer = useRef(null);
 
   useEffect(() => () => clearTimeout(timer.current), []);
@@ -28,7 +30,8 @@ export default function Swipe() {
   const act = (type) => {
     if (exit || !current) return;
     if (type === "report" && !window.confirm("Report this profile for breaking the rules?")) return;
-    react(gameId, current, type);
+    const result = react(gameId, current, type);
+    setMatch(result.match ? { nick: current.nick, userId: current.userId } : null);
     setExit(type);
     timer.current = setTimeout(() => {
       setIndex((i) => i + 1);
@@ -53,10 +56,19 @@ export default function Swipe() {
       <header className="sw__top">
         <Link to="/app" className="sw__back">Back to games</Link>
         <h1 className="sw__game">{game.name}</h1>
-        <NotificationBell />
+        <div className="sw__right">
+          <ChatLink />
+          <NotificationBell />
+        </div>
       </header>
 
       <main className="sw__stage">
+        {match && (
+          <div className="sw__match" role="status">
+            It's a match with <strong>{match.nick}</strong>.{" "}
+            <Link to={`/app/chat/${gameId}/${match.userId}`}>Open chat</Link>
+          </div>
+        )}
         {current ? (
           <>
             <article
