@@ -69,7 +69,7 @@ export default function Admin() {
         <Link to="/app" className="admin__back">Back to site</Link>
         <h1>Admin panel</h1>
         <button
-          className="admin__back"
+          className="admin__logout"
           onClick={() => {
             logout();
             navigate("/login");

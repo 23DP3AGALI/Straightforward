@@ -1,3 +1,3 @@
 git add .
-git commit -m "pievinoju bat failu lai ertak komitot"
+git commit -m "izveidoju min bacend"
 git push origin main

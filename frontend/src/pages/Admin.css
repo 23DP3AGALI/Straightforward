@@ -2,6 +2,13 @@
 .admin__top { display: flex; align-items: baseline; gap: 24px; border-bottom: 1px solid var(--line); padding-bottom: 16px; }
 .admin__top h1 { margin: 0; font-family: "Big Shoulders Display", sans-serif; font-weight: 900; font-size: 2.4rem; color: var(--red); }
 .admin__back { color: var(--muted); border-bottom: 1px solid var(--red); }
+.admin__logout {
+  margin-left: auto; padding: 9px 16px; color: #fff; background: var(--red);
+  border: 1px solid var(--red); border-radius: 5px; font-weight: 700;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+.admin__logout:hover { background: #bd1720; border-color: #bd1720; transform: translateY(-1px); }
+.admin__logout:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
 .admin__body { display: grid; grid-template-columns: 280px 1fr; gap: 32px; margin-top: 24px; }
 .admin h2 { margin: 0 0 12px; font-size: 1.1rem; }
 .admin input, .admin select {

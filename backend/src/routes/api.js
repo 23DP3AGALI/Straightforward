@@ -1,0 +1,35 @@
+import { Router } from "express";
+import rateLimit from "express-rate-limit";
+import * as auth from "../controllers/authController.js";
+import * as games from "../controllers/gameController.js";
+import * as profiles from "../controllers/profileController.js";
+import * as admin from "../controllers/adminController.js";
+import { requireAdmin, requireAuth } from "../middleware/auth.js";
+
+const router = Router();
+const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: "draft-7", legacyHeaders: false });
+
+router.get("/health", (req, res) => res.json({ status: "ok" }));
+router.post("/auth/register", auth.register);
+router.post("/auth/login", loginLimiter, auth.login);
+router.get("/auth/me", requireAuth, auth.me);
+
+router.get("/games", games.listGames);
+router.get("/games/:id", games.getGame);
+router.post("/games", requireAuth, requireAdmin, games.createGame);
+router.patch("/games/:id", requireAuth, requireAdmin, games.updateGame);
+router.delete("/games/:id", requireAuth, requireAdmin, games.deleteGame);
+
+router.get("/games/:gameId/profiles", requireAuth, profiles.listGameProfiles);
+router.get("/games/:gameId/profiles/me", requireAuth, profiles.getMyProfile);
+router.put("/games/:gameId/profiles/me", requireAuth, profiles.saveMyProfile);
+router.delete("/games/:gameId/profiles/me", requireAuth, profiles.deleteMyProfile);
+router.post("/games/:gameId/profiles/:profileId/reactions", requireAuth, profiles.reactToProfile);
+router.post("/games/:gameId/profiles/:profileId/reports", requireAuth, profiles.reportProfile);
+
+router.get("/admin/reports", requireAuth, requireAdmin, admin.listReports);
+router.post("/admin/reports/:reportId/review", requireAuth, requireAdmin, admin.reviewReport);
+router.post("/admin/users/:userId/bans", requireAuth, requireAdmin, admin.banUser);
+router.delete("/admin/users/:userId/bans/:banId", requireAuth, requireAdmin, admin.liftBan);
+
+export default router;
