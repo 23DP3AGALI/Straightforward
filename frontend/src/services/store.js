@@ -1,27 +1,33 @@
-// Временное хранилище игр и их полей анкеты (localStorage).
-// Позже заменим на запросы к backend (таблицы spele и game_fields).
-import { games as seed } from "../data/games";
+import { apiRequest } from "./api";
 
-const KEY = "sf_games";
-
-export function getGames() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(KEY));
-    if (Array.isArray(saved)) return saved;
-  } catch {
-    /* используем стартовый список */
-  }
-  return seed.map((g) => ({ ...g, fields: g.fields ?? [] }));
+export async function getGames() {
+  const { games } = await apiRequest("/games");
+  return games;
 }
 
-export function saveGames(list) {
-  localStorage.setItem(KEY, JSON.stringify(list));
+export async function getGame(id) {
+  const { game } = await apiRequest(`/games/${encodeURIComponent(id)}`);
+  return game;
 }
 
-export function getGame(id) {
-  return getGames().find((g) => g.id === id);
+export async function createGame(game) {
+  const { game: created } = await apiRequest("/games", {
+    method: "POST",
+    auth: true,
+    body: game,
+  });
+  return created;
 }
 
-export function slugify(name) {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 30);
+export async function saveGame(id, game) {
+  const { game: saved } = await apiRequest(`/games/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    auth: true,
+    body: game,
+  });
+  return saved;
+}
+
+export async function deleteGame(id) {
+  await apiRequest(`/games/${encodeURIComponent(id)}`, { method: "DELETE", auth: true });
 }

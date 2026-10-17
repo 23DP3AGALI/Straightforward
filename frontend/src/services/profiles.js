@@ -1,59 +1,47 @@
-// Временная заглушка без БД: анкеты пользователей в localStorage.
-// У каждого пользователя свои анкеты: { [userId]: { [gameId]: анкета } }.
-// Позже заменим на запросы к backend (таблицы anketa и anketa_field_value).
-import { getCurrentUser } from "./auth";
+import { apiRequest } from "./api";
+import { getGames } from "./store";
 
-const KEY = "sf_profiles_v3";
-
-function read() {
-  try {
-    return JSON.parse(localStorage.getItem(KEY)) || {};
-  } catch {
-    return {};
-  }
+export async function hasProfile(gameId) {
+  return Boolean(await getProfile(gameId));
 }
 
-function userProfiles() {
-  const user = getCurrentUser();
-  return user ? read()[user.id] || {} : {};
+export async function getProfile(gameId) {
+  const { profile } = await apiRequest(`/games/${encodeURIComponent(gameId)}/profiles/me`, {
+    auth: true,
+  });
+  return profile;
 }
 
-function write(profiles) {
-  const user = getCurrentUser();
-  if (!user) return;
-  const all = read();
-  all[user.id] = profiles;
-  localStorage.setItem(KEY, JSON.stringify(all));
+export async function getMyProfiles() {
+  const games = await getGames();
+  const profiles = await Promise.all(
+    games.map(async (game) => {
+      const profile = await getProfile(game.id);
+      return profile ? { ...profile, gameId: game.id } : null;
+    }),
+  );
+  return profiles.filter(Boolean).sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 }
 
-export function hasProfile(gameId) {
-  return Boolean(userProfiles()[gameId]);
+export async function saveProfile(gameId, data) {
+  const { profile } = await apiRequest(`/games/${encodeURIComponent(gameId)}/profiles/me`, {
+    method: "PUT",
+    auth: true,
+    body: { about: data.about, values: data.values },
+  });
+  return profile;
 }
 
-export function getProfile(gameId) {
-  return userProfiles()[gameId] || null;
+export async function deleteProfile(gameId) {
+  await apiRequest(`/games/${encodeURIComponent(gameId)}/profiles/me`, {
+    method: "DELETE",
+    auth: true,
+  });
 }
 
-// Все анкеты текущего пользователя: [{ gameId, about, values, updatedAt }]
-export function getMyProfiles() {
-  return Object.entries(userProfiles())
-    .map(([gameId, data]) => ({ gameId, ...data }))
-    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-}
-
-export function saveProfile(gameId, data) {
-  write({ ...userProfiles(), [gameId]: { ...data, updatedAt: Date.now() } });
-}
-
-export function deleteProfile(gameId) {
-  const next = { ...userProfiles() };
-  delete next[gameId];
-  write(next);
-}
-
-// Анкеты всех пользователей для одной игры: [{ userId, about, values, updatedAt }]
-export function getProfilesOfGame(gameId) {
-  return Object.entries(read())
-    .filter(([, byGame]) => byGame?.[gameId])
-    .map(([userId, byGame]) => ({ userId, ...byGame[gameId] }));
+export async function getProfilesOfGame(gameId) {
+  const { profiles } = await apiRequest(`/games/${encodeURIComponent(gameId)}/profiles`, {
+    auth: true,
+  });
+  return profiles;
 }

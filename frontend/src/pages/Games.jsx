@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import GameCard from "../components/GameCard";
 import ChatLink from "../components/ChatLink";
@@ -8,7 +9,15 @@ import { getGames } from "../services/store";
 import "./Games.css";
 
 export default function Games() {
-  const games = getGames();
+  const [games, setGames] = useState([]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    getGames()
+      .then(setGames)
+      .catch((requestError) => setError(requestError.message))
+      .finally(() => setLoading(false));
+  }, []);
   const user = getCurrentUser();
 
   return (
@@ -36,6 +45,9 @@ export default function Games() {
           Pick a game and we'll show you players who fit your playstyle.
         </p>
 
+        {error && <p role="alert">{error}</p>}
+        {loading && <p>Loading games...</p>}
+        {!loading && !error && games.length === 0 && <p>Games have not been added yet.</p>}
         <div className="games__grid">
           {games.map((g) => (
             <GameCard key={g.id} game={g} />

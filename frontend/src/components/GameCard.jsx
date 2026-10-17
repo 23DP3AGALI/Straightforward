@@ -10,13 +10,14 @@ export default function GameCard({ game }) {
   // Картинка из админ-панели (URL); если не задана, берём public/games/<id>.jpg
   const imageUrl = (game.image || `/games/${game.id}.jpg`).replace(/"/g, "%22");
 
-  const handleFind = (e) => {
+  const handleFind = async (e) => {
     e.stopPropagation();
     if (!getCurrentUser()) return navigate("/login");
-    // Есть анкета для этой игры -> свайпы, нет -> создание анкеты
-    navigate(
-      hasProfile(game.id) ? `/app/${game.id}/swipe` : `/app/${game.id}/create`
-    );
+    try {
+      navigate(await hasProfile(game.id) ? `/app/${game.id}/swipe` : `/app/${game.id}/create`);
+    } catch (error) {
+      window.alert(error.message);
+    }
   };
 
   return (

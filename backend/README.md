@@ -19,7 +19,9 @@ Backend uses Node.js, Express, and PostgreSQL.
    npm run dev
    ```
 
-The API listens on `http://localhost:3000`. Health check: `GET /api/health`. Send authenticated requests with `Authorization: Bearer <token>`.
+The API listens on `http://localhost:3000`. Health check: `GET /api/health`. Authenticated requests use `Authorization: Bearer <token>`.
+
+Start the frontend separately from `frontend` with `npm install` and `npm run dev`; Vite forwards `/api` requests to this API. After starting the API, sign in with the administrator credentials from `.env`, open `/admin`, and add games before users can create profiles.
 
 ## Routes
 

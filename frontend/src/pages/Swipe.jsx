@@ -3,7 +3,7 @@ import { Link, Navigate, useParams } from "react-router-dom";
 import ChatLink from "../components/ChatLink";
 import NotificationBell from "../components/NotificationBell";
 import { getCurrentUser } from "../services/auth";
-import { hasProfile } from "../services/profiles";
+import { getProfile } from "../services/profiles";
 import { getGame } from "../services/store";
 import { getFeed, react, resetReactions } from "../services/swipe";
 import "./Swipe.css";
@@ -18,36 +18,75 @@ function fallbackBg(seed) {
 
 export default function Swipe() {
   const { gameId } = useParams();
-  const game = getGame(gameId);
-  const [feed, setFeed] = useState(() => getFeed(gameId));
+  const [game, setGame] = useState(null);
+  const [feed, setFeed] = useState([]);
   const [index, setIndex] = useState(0);
   const [exit, setExit] = useState(null);
   const [match, setMatch] = useState(null);
+  const [hasOwnProfile, setHasOwnProfile] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const timer = useRef(null);
 
-  useEffect(() => () => clearTimeout(timer.current), []);
+  useEffect(() => {
+    let active = true;
+    if (!getCurrentUser()) return undefined;
+    Promise.all([getGame(gameId), getProfile(gameId), getFeed(gameId)])
+      .then(([loadedGame, profile, loadedFeed]) => {
+        if (!active) return;
+        setGame(loadedGame);
+        setHasOwnProfile(Boolean(profile));
+        setFeed(loadedFeed);
+      })
+      .catch((requestError) => {
+        if (active) setError(requestError.message);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+      clearTimeout(timer.current);
+    };
+  }, [gameId]);
 
   if (!getCurrentUser()) return <Navigate to="/login" replace />;
+  if (loading) return <p>Loading profiles...</p>;
+  if (error && !game) return <p role="alert">{error}</p>;
   if (!game) return <Navigate to="/app" replace />;
-  if (!hasProfile(gameId)) return <Navigate to={`/app/${gameId}/create`} replace />;
+  if (!hasOwnProfile) return <Navigate to={`/app/${gameId}/create`} replace />;
 
   const current = feed[index];
 
-  const act = (type) => {
+  const act = async (type) => {
     if (exit || !current) return;
-    if (type === "report" && !window.confirm("Report this profile for breaking the rules?")) return;
-    const result = react(gameId, current, type);
-    setMatch(result.match ? { nick: current.nick, userId: current.userId } : null);
-    setExit(type);
-    timer.current = setTimeout(() => {
-      setIndex((i) => i + 1);
-      setExit(null);
-    }, EXIT_MS);
+    let reason;
+    if (type === "report") {
+      reason = window.prompt("Why are you reporting this profile?");
+      if (!reason?.trim()) return;
+    }
+    try {
+      const result = await react(gameId, current, type, reason);
+      setError("");
+      setMatch(result.match ? { nick: current.nick, userId: current.userId } : null);
+      setExit(type);
+      timer.current = setTimeout(() => {
+        setIndex((i) => i + 1);
+        setExit(null);
+      }, EXIT_MS);
+    } catch (requestError) {
+      setError(requestError.message);
+    }
   };
 
-  const startOver = () => {
+  const startOver = async () => {
     resetReactions(gameId);
-    setFeed(getFeed(gameId));
+    try {
+      setFeed(await getFeed(gameId));
+      setError("");
+    } catch (requestError) {
+      setError(requestError.message);
+    }
     setIndex(0);
   };
 
@@ -69,6 +108,7 @@ export default function Swipe() {
       </header>
 
       <main className="sw__stage">
+        {error && <p role="alert">{error}</p>}
         {match && (
           <div className="sw__match" role="status">
             It's a match with <strong>{match.nick}</strong>.{" "}
@@ -113,17 +153,17 @@ export default function Swipe() {
             </article>
 
             <div className="sw__actions">
-              <button type="button" className="act act--dislike" aria-label="Dislike" onClick={() => act("dislike")}>
+              <button type="button" className="act act--dislike" aria-label="Dislike" disabled={Boolean(exit)} onClick={() => act("dislike")}>
                 <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
                   <path d="M6 6l12 12M18 6L6 18" />
                 </svg>
               </button>
-              <button type="button" className="act act--report" aria-label="Report" onClick={() => act("report")}>
+              <button type="button" className="act act--report" aria-label="Report" disabled={Boolean(exit)} onClick={() => act("report")}>
                 <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M5 21V4m0 0h11l-2 4 2 4H5" />
                 </svg>
               </button>
-              <button type="button" className="act act--like" aria-label="Like" onClick={() => act("like")}>
+              <button type="button" className="act act--like" aria-label="Like" disabled={Boolean(exit)} onClick={() => act("like")}>
                 <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor" aria-hidden="true">
                   <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
                 </svg>

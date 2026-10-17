@@ -1,25 +1,56 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { getCurrentUser } from "../services/auth";
 import { getGame } from "../services/store";
 import { getProfile, saveProfile } from "../services/profiles";
-import { resizeImage } from "../services/photo";
 import "./CreateProfile.css";
 
 export default function CreateProfile({ edit = false }) {
   const { gameId } = useParams();
   const navigate = useNavigate();
-  const game = getGame(gameId);
-
-  const existing = getProfile(gameId);
-  const [about, setAbout] = useState(existing?.about ?? "");
-  const [values, setValues] = useState(existing?.values ?? {});
-  const [photo, setPhoto] = useState(existing?.photo ?? "");
+  const [game, setGame] = useState(null);
+  const [existing, setExisting] = useState(null);
+  const [about, setAbout] = useState("");
+  const [values, setValues] = useState({});
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      getGame(gameId),
+      getCurrentUser() ? getProfile(gameId) : Promise.resolve(null),
+    ])
+      .then(([loadedGame, loadedProfile]) => {
+        if (!active) return;
+        setGame(loadedGame);
+        setExisting(loadedProfile);
+        setAbout(loadedProfile?.about ?? "");
+        setValues(loadedProfile?.values ?? {});
+      })
+      .catch((requestError) => {
+        if (active) setError(requestError.message);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [gameId]);
 
   if (!getCurrentUser()) return <Navigate to="/login" replace />;
-  if (edit && !existing) return <Navigate to="/app/profiles" replace />;
+  if (!loading && edit && !existing) return <Navigate to="/app/profiles" replace />;
 
+  if (loading) return <div className="cp"><p>Loading...</p></div>;
+  if (error && !game) {
+    return (
+      <div className="cp">
+        <p className="cp__error" role="alert">{error}</p>
+        <Link to="/app" className="cp__link">Back to games</Link>
+      </div>
+    );
+  }
   if (!game) {
     return (
       <div className="cp">
@@ -31,30 +62,18 @@ export default function CreateProfile({ edit = false }) {
 
   const setValue = (fid, v) => setValues((prev) => ({ ...prev, [fid]: v }));
 
-  const pickPhoto = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      setPhoto(await resizeImage(file));
-      setError("");
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
-    if (!photo) return setError("Add a profile photo.");
     if (!about.trim()) return setError("Write a short description about yourself.");
     const missing = game.fields.find((f) => f.required && !String(values[f.id] ?? "").trim());
     if (missing) return setError(`Fill in the required field: ${missing.name || "unnamed field"}.`);
 
     try {
-      saveProfile(game.id, { about: about.trim(), photo, values });
-    } catch {
-      return setError("Could not save: browser storage is full. Try a smaller photo.");
+      await saveProfile(game.id, { about: about.trim(), values });
+      navigate(edit ? "/app/profiles" : `/app/${game.id}/swipe`);
+    } catch (requestError) {
+      setError(requestError.message);
     }
-    navigate(edit ? "/app/profiles" : `/app/${game.id}/swipe`);
   };
 
   return (
@@ -66,19 +85,11 @@ export default function CreateProfile({ edit = false }) {
       <p className="cp__sub">{edit ? "Edit your profile for this game." : "Create your profile for this game."}</p>
 
       <form className="cp__form" onSubmit={submit}>
-        <div className="cp__photo">
-          <span className="cp__photo-title">Photo *</span>
-          <label className="cp__photo-pick">
-            {photo ? <img src={photo} alt="Your photo preview" /> : <span>Click to choose a photo</span>}
-            <input type="file" accept="image/*" onChange={pickPhoto} hidden />
-          </label>
-          {photo && <span className="cp__hint">Click the photo to change it.</span>}
-        </div>
-
         <label>
           About you
           <textarea
             rows={4}
+            maxLength={600}
             value={about}
             onChange={(e) => setAbout(e.target.value)}
             placeholder="How do you play, when, and who are you looking for?"
@@ -92,7 +103,7 @@ export default function CreateProfile({ edit = false }) {
             {f.type === "select" ? (
               <select value={values[f.id] ?? ""} onChange={(e) => setValue(f.id, e.target.value)}>
                 <option value="">Choose...</option>
-                {f.options.split(",").map((o) => o.trim()).filter(Boolean).map((o) => (
+                {f.options.map((o) => (
                   <option key={o} value={o}>{o}</option>
                 ))}
               </select>

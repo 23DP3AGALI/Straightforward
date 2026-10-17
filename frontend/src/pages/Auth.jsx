@@ -13,19 +13,19 @@ export default function Auth({ isRegister }) {
   const update = (event) =>
     setValues({ ...values, [event.target.name]: event.target.value });
 
-  const submit = (event) => {
+  const submit = async (event) => {
     event.preventDefault();
     setError("");
 
     try {
-      const user = isRegister
+      const user = await (isRegister
         ? register({
             email: values.email,
             nick: values.nick,
             kontakt_informacija: values.contact,
             password: values.password,
           })
-        : login(values.email, values.password);
+        : login(values.email, values.password));
       navigate(user.isAdmin ? "/admin" : "/app", { replace: true });
     } catch (submissionError) {
       setError(submissionError.message);
@@ -85,7 +85,7 @@ export default function Auth({ isRegister }) {
               type="password"
               name="password"
               autoComplete={isRegister ? "new-password" : "current-password"}
-              minLength={isRegister ? 6 : undefined}
+              minLength={isRegister ? 8 : undefined}
               value={values.password}
               onChange={update}
               required

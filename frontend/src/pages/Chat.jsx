@@ -8,6 +8,7 @@ import "./Chat.css";
 
 export default function Chat() {
   const { gameId, userId } = useParams();
+  const [game, setGame] = useState(null);
   const [messages, setMessages] = useState(() => getMessages(gameId, userId));
   const [text, setText] = useState("");
   const endRef = useRef(null);
@@ -15,6 +16,10 @@ export default function Chat() {
   useEffect(() => {
     markChatRead(gameId, userId);
   }, [gameId, userId]);
+
+  useEffect(() => {
+    getGame(gameId).then(setGame).catch(() => setGame(null));
+  }, [gameId]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -41,7 +46,7 @@ export default function Chat() {
         <Link to="/app/chats" className="ch__link">Chats</Link>
         <div className="cv__who">
           <strong>{match.nick}</strong>
-          <span>{getGame(gameId)?.name}</span>
+          <span>{game?.name}</span>
         </div>
         <span className="cv__contact">
           {isDemo(userId)

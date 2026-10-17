@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { getCurrentUser } from "../services/auth";
 import { getGames } from "../services/store";
@@ -14,15 +14,31 @@ function fieldRows(game, profile) {
 
 export default function MyProfiles() {
   const user = getCurrentUser();
-  const games = getGames();
-  const [profiles, setProfiles] = useState(getMyProfiles);
+  const [games, setGames] = useState([]);
+  const [profiles, setProfiles] = useState([]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([getGames(), getMyProfiles()])
+      .then(([loadedGames, loadedProfiles]) => {
+        setGames(loadedGames);
+        setProfiles(loadedProfiles);
+      })
+      .catch((requestError) => setError(requestError.message))
+      .finally(() => setLoading(false));
+  }, []);
 
   if (!user) return <Navigate to="/login" replace />;
 
-  const remove = (gameId, gameName) => {
+  const remove = async (gameId, gameName) => {
     if (!window.confirm(`Delete your profile for ${gameName}?`)) return;
-    deleteProfile(gameId);
-    setProfiles(getMyProfiles());
+    try {
+      await deleteProfile(gameId);
+      setProfiles((current) => current.filter((profile) => String(profile.gameId) !== String(gameId)));
+    } catch (requestError) {
+      setError(requestError.message);
+    }
   };
 
   return (
@@ -31,7 +47,8 @@ export default function MyProfiles() {
       <h1 className="mp__title">My profiles</h1>
       <p className="mp__sub">Your profiles for each game. Edit or delete them here.</p>
 
-      {profiles.length === 0 ? (
+      {error && <p role="alert">{error}</p>}
+      {loading ? <p>Loading profiles...</p> : profiles.length === 0 ? (
         <div className="mp__empty">
           <p>You have no profiles yet.</p>
           <Link to="/app" className="mp__btn mp__btn--main">Choose a game</Link>
