@@ -2,7 +2,7 @@ import "dotenv/config";
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
-import { pool } from "./config/db.js";
+import { closeDatabase, db } from "./config/db.js";
 import { ensureBootstrapAdmin } from "./controllers/authController.js";
 import apiRouter from "./routes/api.js";
 
@@ -20,17 +20,17 @@ app.use((req, res) => res.status(404).json({ error: "Route not found." }));
 app.use((error, req, res, next) => {
   console.error(error);
   if (res.headersSent) return next(error);
-  const status = error.status || (["23503", "23505", "23514"].includes(error.code) ? 409 : 500);
+  const status = error.status || (["ER_DUP_ENTRY", "ER_NO_REFERENCED_ROW_2", "ER_ROW_IS_REFERENCED_2"].includes(error.code) ? 409 : 500);
   res.status(status).json({ error: status === 500 ? "Internal server error." : error.message });
 });
 
 const port = Number(process.env.PORT || 3000);
 try {
-  await pool.query("SELECT 1");
+  await db.query("SELECT 1");
   await ensureBootstrapAdmin();
   app.listen(port, () => console.log(`API listening on port ${port}`));
 } catch (error) {
   console.error("Could not start the API:", error.message);
   process.exitCode = 1;
-  await pool.end();
+  await closeDatabase();
 }

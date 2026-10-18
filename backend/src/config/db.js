@@ -1,23 +1,40 @@
-import pg from "pg";
+import mysql from "mysql2/promise";
 
-const { Pool } = pg;
+const pool = mysql.createPool(process.env.DATABASE_URL);
 
-export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_SSL === "true" ? { rejectUnauthorized: false } : undefined,
-});
+function createQueryable(connection) {
+  return {
+    async query(sql, parameters = []) {
+      const [result] = await connection.query(sql, parameters);
+      if (Array.isArray(result)) {
+        return { rows: result, rowCount: result.length };
+      }
+      return {
+        rows: [],
+        rowCount: result.affectedRows,
+        insertId: result.insertId,
+      };
+    },
+  };
+}
+
+export const db = createQueryable(pool);
 
 export async function withTransaction(callback) {
-  const client = await pool.connect();
+  const connection = await pool.getConnection();
   try {
-    await client.query("BEGIN");
-    const result = await callback(client);
-    await client.query("COMMIT");
+    await connection.beginTransaction();
+    const result = await callback(createQueryable(connection));
+    await connection.commit();
     return result;
   } catch (error) {
-    await client.query("ROLLBACK");
+    await connection.rollback();
     throw error;
   } finally {
-    client.release();
+    connection.release();
   }
+}
+
+export async function closeDatabase() {
+  await pool.end();
 }

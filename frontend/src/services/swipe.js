@@ -3,8 +3,6 @@ import { apiRequest } from "./api";
 import { getProfilesOfGame } from "./profiles";
 
 const SEEN_KEY = "sf_seen_profiles_v1";
-const MATCHES_KEY = "sf_matches_v1";
-const same = (a, b) => String(a) === String(b);
 
 function read(key, fallback = []) {
   try {
@@ -29,17 +27,18 @@ export async function getFeed(gameId) {
 
 export async function react(gameId, target, type, reason) {
   if (!getCurrentUser()) throw new Error("Sign in to react to profiles.");
-  let result;
+  let match = false;
   if (type === "report") {
-    result = await apiRequest(
+    await apiRequest(
       `/games/${encodeURIComponent(gameId)}/profiles/${encodeURIComponent(target.profileId)}/reports`,
       { method: "POST", auth: true, body: { reason } },
     );
   } else {
-    result = await apiRequest(
+    const result = await apiRequest(
       `/games/${encodeURIComponent(gameId)}/profiles/${encodeURIComponent(target.profileId)}/reactions`,
       { method: "POST", auth: true, body: { type } },
     );
+    match = Boolean(result?.match);
   }
 
   const key = seenKey(gameId);
@@ -47,18 +46,7 @@ export async function react(gameId, target, type, reason) {
   seen[key] = [...new Set([...(seen[key] || []), String(target.profileId)])];
   localStorage.setItem(SEEN_KEY, JSON.stringify(seen));
 
-  if (result?.match) {
-    const matches = read(MATCHES_KEY);
-    matches.push({
-      ownerId: String(getCurrentUser().id),
-      gameId: String(gameId),
-      userId: String(target.userId),
-      nick: target.nick,
-      matchedAt: Date.now(),
-    });
-    localStorage.setItem(MATCHES_KEY, JSON.stringify(matches));
-  }
-  return { match: Boolean(result?.match) };
+  return { match };
 }
 
 export function resetReactions(gameId) {
@@ -68,14 +56,3 @@ export function resetReactions(gameId) {
 }
 
 export const isDemo = () => false;
-
-export function getMatches() {
-  const user = getCurrentUser();
-  return user
-    ? read(MATCHES_KEY).filter((match) => same(match.ownerId, user.id))
-    : [];
-}
-
-export function findMatch(gameId, userId) {
-  return getMatches().find((match) => same(match.gameId, gameId) && same(match.userId, userId)) || null;
-}

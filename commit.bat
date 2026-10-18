@@ -1,3 +1,3 @@
 git add .
-git commit -m "izveidoju savienojums ar bacend"
+git commit -m "notesteju un izlaboju stradašanu procesu"
 git push origin main

@@ -4,6 +4,8 @@ import * as auth from "../controllers/authController.js";
 import * as games from "../controllers/gameController.js";
 import * as profiles from "../controllers/profileController.js";
 import * as admin from "../controllers/adminController.js";
+import * as chats from "../controllers/chatController.js";
+import * as notifications from "../controllers/notificationController.js";
 import { requireAdmin, requireAuth } from "../middleware/auth.js";
 
 const router = Router();
@@ -26,6 +28,14 @@ router.put("/games/:gameId/profiles/me", requireAuth, profiles.saveMyProfile);
 router.delete("/games/:gameId/profiles/me", requireAuth, profiles.deleteMyProfile);
 router.post("/games/:gameId/profiles/:profileId/reactions", requireAuth, profiles.reactToProfile);
 router.post("/games/:gameId/profiles/:profileId/reports", requireAuth, profiles.reportProfile);
+
+router.get("/chats", requireAuth, chats.listChats);
+router.get("/chats/:gameId/:userId/messages", requireAuth, chats.getMessages);
+router.post("/chats/:gameId/:userId/messages", requireAuth, chats.sendMessage);
+router.get("/notifications/unread-count", requireAuth, notifications.getUnreadCount);
+router.get("/notifications", requireAuth, notifications.listNotifications);
+router.post("/notifications/read", requireAuth, notifications.markAllNotificationsRead);
+router.post("/notifications/:notificationId/read", requireAuth, notifications.markNotificationRead);
 
 router.get("/admin/reports", requireAuth, requireAdmin, admin.listReports);
 router.post("/admin/reports/:reportId/review", requireAuth, requireAdmin, admin.reviewReport);
