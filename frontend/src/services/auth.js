@@ -10,7 +10,22 @@ function saveSession(payload) {
 
 export async function register(details) {
   const payload = await apiRequest("/auth/register", { method: "POST", body: details });
+  return payload.verificationRequired ? payload : saveSession(payload);
+}
+
+export async function verifyRegistration(email, code) {
+  const payload = await apiRequest("/auth/verify-registration", {
+    method: "POST",
+    body: { email, code },
+  });
   return saveSession(payload);
+}
+
+export async function resendRegistrationCode(email) {
+  return apiRequest("/auth/resend-registration-code", {
+    method: "POST",
+    body: { email },
+  });
 }
 
 export async function login(email, password) {

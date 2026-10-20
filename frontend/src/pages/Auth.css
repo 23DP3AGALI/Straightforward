@@ -76,6 +76,26 @@
   color: #ff6b73;
 }
 
+.auth__notice {
+  margin: 0;
+  color: #2ecc71;
+}
+
+.auth__resend {
+  padding: 10px;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font: 600 0.95rem "Manrope", sans-serif;
+  cursor: pointer;
+}
+
+.auth__resend:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
 .auth__submit {
   padding: 12px;
   border: 0;

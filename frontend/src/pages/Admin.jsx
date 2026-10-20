@@ -24,6 +24,12 @@ export default function Admin() {
   const [adminNotice, setAdminNotice] = useState("");
   const [adminNick, setAdminNick] = useState("");
   const [adminAction, setAdminAction] = useState(false);
+  const [reports, setReports] = useState([]);
+  const [bans, setBans] = useState([]);
+  const [moderationLoading, setModerationLoading] = useState(true);
+  const [banReportId, setBanReportId] = useState(null);
+  const [banReasons, setBanReasons] = useState({});
+  const [moderationAction, setModerationAction] = useState("");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const selected = games.find((game) => String(game.id) === String(selectedId));
@@ -64,6 +70,91 @@ export default function Admin() {
       .catch((requestError) => setError(requestError.message))
       .finally(() => setLoading(false));
   }, []);
+
+  const refreshModeration = async () => {
+    const [reportResult, banResult] = await Promise.all([
+      apiRequest("/admin/reports", { auth: true }),
+      apiRequest("/admin/bans", { auth: true }),
+    ]);
+    setReports(reportResult.reports);
+    setBans(banResult.bans);
+  };
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      apiRequest("/admin/reports", { auth: true }),
+      apiRequest("/admin/bans", { auth: true }),
+    ])
+      .then(([reportResult, banResult]) => {
+        if (!active) return;
+        setReports(reportResult.reports);
+        setBans(banResult.bans);
+      })
+      .catch((requestError) => {
+        if (active) setError(requestError.message);
+      })
+      .finally(() => {
+        if (active) setModerationLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const markReportReviewed = async (reportId) => {
+    setError("");
+    setModerationAction(`review:${reportId}`);
+    try {
+      await apiRequest(`/admin/reports/${encodeURIComponent(reportId)}/review`, {
+        method: "POST",
+        auth: true,
+      });
+      await refreshModeration();
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setModerationAction("");
+    }
+  };
+
+  const banReportedUser = async (event, report) => {
+    event.preventDefault();
+    const reason = banReasons[report.id]?.trim();
+    if (!reason) return;
+    setError("");
+    setModerationAction(`ban:${report.id}`);
+    try {
+      await apiRequest(`/admin/users/${encodeURIComponent(report.reportedUserId)}/bans`, {
+        method: "POST",
+        auth: true,
+        body: { reason },
+      });
+      setBanReportId(null);
+      setBanReasons((current) => ({ ...current, [report.id]: "" }));
+      await refreshModeration();
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setModerationAction("");
+    }
+  };
+
+  const liftUserBan = async (ban) => {
+    setError("");
+    setModerationAction(`lift:${ban.id}`);
+    try {
+      await apiRequest(`/admin/users/${encodeURIComponent(ban.userId)}/bans/${encodeURIComponent(ban.id)}`, {
+        method: "DELETE",
+        auth: true,
+      });
+      await refreshModeration();
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setModerationAction("");
+    }
+  };
 
   const updateGame = (patch) =>
     setGames((current) => current.map((game) => (
@@ -289,6 +380,105 @@ export default function Admin() {
           </section>
         </div>
       )}
+      <section className="admin__moderation" aria-labelledby="reports-heading">
+        <h2 id="reports-heading">Player reports</h2>
+        {moderationLoading ? <p className="admin__hint">Loading reports...</p> : reports.length === 0 ? (
+          <p className="admin__hint">There are no reports yet.</p>
+        ) : (
+          <ul className="admin__moderation-list">
+            {reports.map((report) => (
+              <li key={report.id} className="admin__moderation-card">
+                <div className="admin__moderation-heading">
+                  <div>
+                    <h3>{report.reportedNick}</h3>
+                    <p>{report.gameName} · Reported by {report.reporterNick}</p>
+                  </div>
+                  <span className={`admin__status ${report.reviewedBy ? "admin__status--reviewed" : ""}`}>
+                    {report.reviewedBy ? `Reviewed by ${report.reviewedByNick || "admin"}` : "Pending"}
+                  </span>
+                </div>
+                <p className="admin__report-reason">{report.reason}</p>
+                <p className="admin__hint">Received {new Date(report.createdAt).toLocaleString()}</p>
+                <div className="admin__moderation-actions">
+                  {!report.reviewedBy && (
+                    <button
+                      type="button"
+                      disabled={Boolean(moderationAction)}
+                      onClick={() => markReportReviewed(report.id)}
+                    >
+                      {moderationAction === `review:${report.id}` ? "Saving..." : "Mark reviewed"}
+                    </button>
+                  )}
+                  {report.isBanned ? (
+                    <span className="admin__status admin__status--banned">User currently blocked</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="admin__ban-button"
+                      disabled={Boolean(moderationAction)}
+                      onClick={() => setBanReportId((current) => current === report.id ? null : report.id)}
+                    >
+                      Block user
+                    </button>
+                  )}
+                </div>
+                {banReportId === report.id && !report.isBanned && (
+                  <form className="admin__ban-form" onSubmit={(event) => banReportedUser(event, report)}>
+                    <label>
+                      Reason for blocking
+                      <textarea
+                        value={banReasons[report.id] || ""}
+                        maxLength={1000}
+                        required
+                        rows={3}
+                        onChange={(event) => setBanReasons((current) => ({ ...current, [report.id]: event.target.value }))}
+                      />
+                    </label>
+                    <button type="submit" disabled={Boolean(moderationAction)}>
+                      {moderationAction === `ban:${report.id}` ? "Blocking..." : "Confirm block"}
+                    </button>
+                    <button type="button" onClick={() => setBanReportId(null)}>Cancel</button>
+                  </form>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="admin__moderation" aria-labelledby="ban-history-heading">
+        <h2 id="ban-history-heading">Ban history</h2>
+        {moderationLoading ? <p className="admin__hint">Loading ban history...</p> : bans.length === 0 ? (
+          <p className="admin__hint">There are no bans in the history.</p>
+        ) : (
+          <ul className="admin__moderation-list">
+            {bans.map((ban) => (
+              <li key={ban.id} className="admin__moderation-card admin__ban-history">
+                <div className="admin__moderation-heading">
+                  <div>
+                    <h3>{ban.userNick}</h3>
+                    <p>Blocked by {ban.adminNick} · {new Date(ban.createdAt).toLocaleString()}</p>
+                  </div>
+                  <span className={`admin__status ${ban.isActive ? "admin__status--banned" : "admin__status--reviewed"}`}>
+                    {ban.isActive ? "Active" : "Lifted / expired"}
+                  </span>
+                </div>
+                <p className="admin__report-reason">{ban.reason}</p>
+                {ban.endsAt && <p className="admin__hint">Ends {new Date(ban.endsAt).toLocaleString()}</p>}
+                {ban.isActive && (
+                  <button
+                    type="button"
+                    disabled={Boolean(moderationAction)}
+                    onClick={() => liftUserBan(ban)}
+                  >
+                    {moderationAction === `lift:${ban.id}` ? "Unblocking..." : "Lift block"}
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

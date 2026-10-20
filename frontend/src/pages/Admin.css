@@ -19,6 +19,31 @@
 .admin__admin-form button:last-child { color: var(--ink); background: transparent; border: 1px solid var(--line); }
 .admin__admin-form button:disabled { opacity: .6; cursor: wait; }
 .admin__notice { color: #2ecc71; }
+.admin__moderation { margin-top: 32px; }
+.admin__moderation > h2 { padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.admin__moderation-list { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.admin__moderation-card { padding: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.admin__moderation-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.admin__moderation-heading h3 { margin: 0; font-size: 1.05rem; }
+.admin__moderation-heading p, .admin__report-reason { margin: 5px 0 0; overflow-wrap: anywhere; }
+.admin__moderation-card > .admin__hint { margin: 8px 0 0; }
+.admin__moderation-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.admin__moderation-actions button, .admin__ban-history > button, .admin__ban-form button {
+  padding: 8px 12px; color: #fff; background: var(--red); border: 0; border-radius: 4px; font-weight: 700;
+}
+.admin__moderation-actions button:disabled, .admin__ban-history > button:disabled, .admin__ban-form button:disabled { opacity: .6; cursor: wait; }
+.admin__moderation-actions .admin__ban-button { background: #a51620; }
+.admin__status { padding: 4px 8px; color: #ffd166; background: rgba(245, 166, 35, .12); border: 1px solid rgba(245, 166, 35, .4); border-radius: 999px; font-size: .78rem; white-space: nowrap; }
+.admin__status--reviewed { color: #2ecc71; background: rgba(46, 204, 113, .1); border-color: rgba(46, 204, 113, .35); }
+.admin__status--banned { color: #ff6b73; background: rgba(229, 32, 43, .12); border-color: rgba(229, 32, 43, .4); }
+.admin__ban-form { display: grid; gap: 10px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.admin__ban-form label { display: grid; gap: 6px; font-weight: 700; }
+.admin__ban-form textarea { width: 100%; padding: 9px 10px; color: var(--ink); background: var(--black); border: 1px solid var(--line); border-radius: 4px; font: inherit; resize: vertical; }
+.admin__ban-form button:last-child { width: fit-content; color: var(--ink); background: transparent; border: 1px solid var(--line); }
+.admin__ban-history { display: grid; gap: 10px; }
+@media (max-width: 520px) {
+  .admin__moderation-heading { flex-direction: column; }
+}
 .admin h2 { margin: 0 0 12px; font-size: 1.1rem; }
 .admin input, .admin select {
   padding: 8px 10px; background: var(--surface); color: var(--ink);

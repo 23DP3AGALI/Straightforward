@@ -3,14 +3,41 @@ import { db, withTransaction } from "../config/db.js";
 export async function listReports(req, res) {
   const { rows } = await db.query(
     `SELECT r.id, r.pamatojums AS reason, r.datums AS createdAt, r.admin_id AS reviewedBy,
+            reviewer_user.nick AS reviewedByNick, game.nosaukums AS gameName,
             p.id AS profileId, p.spele_id AS gameId, p.lietotajs_id AS reportedUserId,
-            target.nick AS reportedNick, reporter.id AS reporterId, reporter.nick AS reporterNick
+            target.nick AS reportedNick,
+            EXISTS (SELECT 1 FROM lietotaja_bans active_ban
+                    WHERE active_ban.lietotajs_id = target.id AND active_ban.ir_aktivs = 'ir'
+                      AND (active_ban.beigu_datums IS NULL OR active_ban.beigu_datums > CURRENT_TIMESTAMP)) AS isBanned,
+            reporter.id AS reporterId, reporter.nick AS reporterNick
      FROM zinojums r JOIN anketa p ON p.id = r.anketa_id
      JOIN lietotajs target ON target.id = p.lietotajs_id
      JOIN lietotajs reporter ON reporter.id = r.lietotajs_id
+     JOIN spele game ON game.id = p.spele_id
+     LEFT JOIN lietotajs reviewer_user ON reviewer_user.id = r.admin_id
      ORDER BY (r.admin_id IS NULL) DESC, r.datums DESC`,
   );
-  res.json({ reports: rows });
+  res.json({ reports: rows.map((report) => ({
+    ...report,
+    isBanned: Boolean(report.isBanned),
+    reviewedBy: report.reviewedBy == null ? null : Number(report.reviewedBy),
+  })) });
+}
+
+export async function listBans(req, res) {
+  const { rows } = await db.query(
+    `SELECT b.id, b.lietotajs_id AS userId, target.nick AS userNick,
+            b.pamatojums AS reason, b.datums AS createdAt, b.beigu_datums AS endsAt,
+            b.ir_aktivs AS activeStatus, b.admin_id AS adminId, admin_user.nick AS adminNick,
+            (b.ir_aktivs = 'ir' AND (b.beigu_datums IS NULL OR b.beigu_datums > CURRENT_TIMESTAMP)) AS isActive
+     FROM lietotaja_bans b
+     JOIN lietotajs target ON target.id = b.lietotajs_id
+     JOIN admin a ON a.id = b.admin_id
+     JOIN lietotajs admin_user ON admin_user.id = a.id
+     ORDER BY b.datums DESC
+     LIMIT 200`,
+  );
+  res.json({ bans: rows.map((ban) => ({ ...ban, isActive: Boolean(ban.isActive) })) });
 }
 
 export async function reviewReport(req, res) {

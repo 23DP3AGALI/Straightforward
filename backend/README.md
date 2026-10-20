@@ -65,6 +65,12 @@ Backend uses Node.js, Express, and MySQL 8+ (or a compatible MariaDB release).
    mysql -u root -p straightforward < database\migrations\007_user_profile_settings.sql
    ```
 
+   To enable email verification during registration, apply:
+
+   ```cmd
+   mysql -u root -p straightforward < database\migrations\008_email_verification.sql
+   ```
+
 3. In `backend`, create the local environment file:
 
    ```powershell
@@ -78,6 +84,12 @@ Backend uses Node.js, Express, and MySQL 8+ (or a compatible MariaDB release).
    DATABASE_URL=mysql://root:your-password@localhost:3306/straightforward
    JWT_SECRET=replace-with-a-random-secret-at-least-32-characters
    FRONTEND_ORIGIN=http://localhost:5173
+   SMTP_HOST=smtp.example.com
+   SMTP_PORT=587
+   SMTP_SECURE=false
+   SMTP_USER=your-smtp-username
+   SMTP_PASS=your-smtp-password
+   SMTP_FROM=StraightForward <no-reply@example.com>
    ADMIN_EMAIL=admin@example.com
    ADMIN_NICK=admin
    ADMIN_PASSWORD=change-this-password
@@ -85,6 +97,11 @@ Backend uses Node.js, Express, and MySQL 8+ (or a compatible MariaDB release).
 
    Generate a random secret with
    `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
+   Registration email verification requires valid SMTP credentials. Use the SMTP
+   host, port, username, and app-specific password/API credential provided by
+   your email provider. Port 465 uses TLS automatically; set `SMTP_SECURE=true`
+   when your provider requires TLS on another port. The verification code expires
+   after 10 minutes, can be resent once per minute, and allows five attempts.
 
 4. In a terminal opened in `backend`, install dependencies and start the API:
 
@@ -107,7 +124,7 @@ Backend uses Node.js, Express, and MySQL 8+ (or a compatible MariaDB release).
 
 ## Routes
 
-- `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`, and `PATCH /api/auth/me` for account settings
+- `POST /api/auth/register`, `POST /api/auth/verify-registration`, `POST /api/auth/resend-registration-code`, `POST /api/auth/login`, `GET /api/auth/me`, and `PATCH /api/auth/me` for account settings
 - `GET /api/games`, `GET /api/games/:id`; admins can create, edit, and delete games at `/api/games`
 - `GET /api/games/:gameId/profiles`, `GET|PUT|DELETE /api/games/:gameId/profiles/me`
 - `GET /api/profiles/favorites`, `PUT|DELETE /api/profiles/favorites/:profileId`, and `GET /api/profiles/history`
@@ -117,6 +134,7 @@ Backend uses Node.js, Express, and MySQL 8+ (or a compatible MariaDB release).
 - `POST /api/games/:gameId/profiles/:profileId/reactions` with `{ "type": "like" | "dislike" }`
 - `POST /api/games/:gameId/profiles/:profileId/reports` with `{ "reason": "..." }`
 - Admin moderation: `GET /api/admin/reports`, `POST /api/admin/reports/:reportId/review`, and ban/lift-ban routes under `/api/admin/users/:userId/bans`
+- Admin moderation history: `GET /api/admin/bans` lists recent bans and their active/lifted status
 
 Registration and login return `{ "token", "user" }`. Game fields use API types
 `text`, `number`, `select`, and `checkbox`; profile values are keyed by field ID.

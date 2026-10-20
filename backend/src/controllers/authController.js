@@ -1,6 +1,8 @@
 import bcrypt from "bcryptjs";
+import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
 import jwt from "jsonwebtoken";
 import { db, withTransaction } from "../config/db.js";
+import { sendVerificationCode } from "../services/email.js";
 
 function createToken(user) {
   return jwt.sign({ sub: user.id }, process.env.JWT_SECRET, { expiresIn: "12h" });
@@ -18,6 +20,25 @@ function publicUser(user) {
   };
 }
 
+function verificationHash(email, code) {
+  return createHmac("sha256", process.env.JWT_SECRET)
+    .update(`${email}:${code}`)
+    .digest("hex");
+}
+
+function sameHash(left, right) {
+  const leftBuffer = Buffer.from(left, "hex");
+  const rightBuffer = Buffer.from(right, "hex");
+  return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+async function createEmailCode(email) {
+  const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+  const codeHash = verificationHash(email, code);
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+  return { code, codeHash, expiresAt };
+}
+
 export async function register(req, res) {
   const { email, nick, kontakt_informacija = "", password } = req.body;
   if (typeof email !== "string" || email.trim().length > 100 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
@@ -29,22 +50,145 @@ export async function register(req, res) {
   if (typeof password !== "string" || password.length < 8) {
     return res.status(400).json({ error: "Password must contain at least 8 characters." });
   }
+  if (typeof kontakt_informacija !== "string" || kontakt_informacija.length > 200) {
+    return res.status(400).json({ error: "Contact information must be at most 200 characters." });
+  }
 
   try {
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedNick = nick.trim();
+    const existing = await db.query(
+      `SELECT id FROM lietotajs WHERE email = ? OR nick = ?
+       UNION ALL
+       SELECT id FROM email_registration_verification WHERE email = ? OR nick = ?
+       LIMIT 1`,
+      [normalizedEmail, normalizedNick, normalizedEmail, normalizedNick],
+    );
+    if (existing.rows[0]) return res.status(409).json({ error: "Email or nickname is already in use." });
+
     const passwordHash = await bcrypt.hash(password, 12);
-    const inserted = await db.query(
-      `INSERT INTO lietotajs (email, nick, kontakt_informacija, password_hash)
-       VALUES (?, ?, ?, ?)`,
-      [email.trim().toLowerCase(), nick.trim(), String(kontakt_informacija).trim() || null, passwordHash],
+    const { code, codeHash, expiresAt } = await createEmailCode(normalizedEmail);
+    await db.query(
+      `INSERT INTO email_registration_verification
+         (email, nick, contact, password_hash, code_hash, expires_at, last_sent_at)
+       VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+      [
+        normalizedEmail,
+        normalizedNick,
+        kontakt_informacija.trim() || null,
+        passwordHash,
+        codeHash,
+        expiresAt,
+      ],
     );
-    const { rows } = await db.query(
-      "SELECT id, email, nick, kontakt_informacija, avatar, ir_banots FROM lietotajs WHERE id = ?",
-      [inserted.insertId],
-    );
-    const user = { ...rows[0], is_admin: false };
-    return res.status(201).json({ token: createToken(user), user: publicUser(user) });
+    try {
+      await sendVerificationCode(normalizedEmail, code);
+    } catch (mailError) {
+      await db.query(
+        "DELETE FROM email_registration_verification WHERE email = ? AND code_hash = ?",
+        [normalizedEmail, codeHash],
+      );
+      if (mailError.message.startsWith("Email verification is not configured") || mailError.message.startsWith("SMTP_PORT")) {
+        return res.status(503).json({ error: "Email verification is temporarily unavailable. Please try again later." });
+      }
+      throw mailError;
+    }
+    return res.status(202).json({ verificationRequired: true, email: normalizedEmail });
   } catch (error) {
     if (error.code === "ER_DUP_ENTRY") return res.status(409).json({ error: "Email or nickname is already in use." });
+    throw error;
+  }
+}
+
+export async function verifyRegistration(req, res) {
+  const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+  const code = req.body?.code;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || typeof code !== "string" || !/^\d{6}$/.test(code)) {
+    return res.status(400).json({ error: "Enter a valid email address and 6-digit code." });
+  }
+
+  try {
+    const user = await withTransaction(async (client) => {
+      const { rows } = await client.query(
+        `SELECT email, nick, contact, password_hash, code_hash, attempts,
+                (expires_at > CURRENT_TIMESTAMP) AS is_valid
+         FROM email_registration_verification
+         WHERE email = ? FOR UPDATE`,
+        [email],
+      );
+      const pending = rows[0];
+      if (!pending) return { status: "missing" };
+      if (!pending.is_valid) {
+        await client.query("DELETE FROM email_registration_verification WHERE email = ?", [email]);
+        return { status: "expired" };
+      }
+      const codeMatches = sameHash(verificationHash(email, code), pending.code_hash);
+      if (!codeMatches) {
+        if (Number(pending.attempts) >= 4) {
+          await client.query("DELETE FROM email_registration_verification WHERE email = ?", [email]);
+          return { status: "locked" };
+        }
+        await client.query(
+          "UPDATE email_registration_verification SET attempts = attempts + 1 WHERE email = ?",
+          [email],
+        );
+        return { status: "invalid" };
+      }
+
+      const inserted = await client.query(
+        `INSERT INTO lietotajs (email, nick, kontakt_informacija, password_hash)
+         VALUES (?, ?, ?, ?)`,
+        [pending.email, pending.nick, pending.contact, pending.password_hash],
+      );
+      await client.query("DELETE FROM email_registration_verification WHERE email = ?", [email]);
+      const created = await client.query(
+        "SELECT id, email, nick, kontakt_informacija, avatar, ir_banots FROM lietotajs WHERE id = ?",
+        [inserted.insertId],
+      );
+      return { status: "verified", user: { ...created.rows[0], is_admin: false } };
+    });
+
+    if (user.status === "missing") return res.status(404).json({ error: "Verification request not found. Please register again." });
+    if (user.status === "expired") return res.status(400).json({ error: "Verification code expired. Request a new code." });
+    if (user.status === "locked") return res.status(429).json({ error: "Too many incorrect codes. Register again to receive a new code." });
+    if (user.status === "invalid") return res.status(400).json({ error: "Incorrect verification code." });
+    return res.status(201).json({ token: createToken(user.user), user: publicUser(user.user) });
+  } catch (error) {
+    if (error.code === "ER_DUP_ENTRY") return res.status(409).json({ error: "Email or nickname is already in use." });
+    throw error;
+  }
+}
+
+export async function resendRegistrationCode(req, res) {
+  const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: "Enter a valid email address." });
+  }
+
+  const { rows } = await db.query(
+    `SELECT email, (TIMESTAMPDIFF(SECOND, last_sent_at, CURRENT_TIMESTAMP) < 60) AS cooldown,
+            (expires_at > CURRENT_TIMESTAMP) AS is_valid
+     FROM email_registration_verification WHERE email = ?`,
+    [email],
+  );
+  const pending = rows[0];
+  if (!pending) return res.json({ sent: true });
+  if (pending.cooldown) return res.status(429).json({ error: "Please wait a minute before requesting another code." });
+
+  try {
+    const { code, codeHash, expiresAt } = await createEmailCode(email);
+    await sendVerificationCode(email, code);
+    await db.query(
+      `UPDATE email_registration_verification
+       SET code_hash = ?, expires_at = ?, last_sent_at = CURRENT_TIMESTAMP, attempts = 0
+       WHERE email = ?`,
+      [codeHash, expiresAt, email],
+    );
+    return res.json({ sent: true });
+  } catch (error) {
+    if (error.message.startsWith("Email verification is not configured") || error.message.startsWith("SMTP_PORT")) {
+      return res.status(503).json({ error: "Email verification is temporarily unavailable. Please try again later." });
+    }
     throw error;
   }
 }
@@ -76,6 +220,7 @@ export function me(req, res) {
 
 export async function updateMe(req, res) {
   const { email, nick, contact = "", avatar = "", currentPassword, newPassword } = req.body;
+  const passwordToSet = newPassword === "" ? null : newPassword;
   if (typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) || email.trim().length > 100) {
     return res.status(400).json({ error: "Enter a valid email address of at most 100 characters." });
   }
@@ -90,10 +235,10 @@ export async function updateMe(req, res) {
     || (avatar && !/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(avatar))) {
     return res.status(400).json({ error: "Avatar must be a supported image under 150 KB." });
   }
-  if (newPassword != null && (typeof newPassword !== "string" || newPassword.length < 8 || newPassword.length > 100)) {
+  if (passwordToSet != null && (typeof passwordToSet !== "string" || passwordToSet.length < 8 || passwordToSet.length > 100)) {
     return res.status(400).json({ error: "New password must contain 8 to 100 characters." });
   }
-  if (newPassword && typeof currentPassword !== "string") {
+  if (passwordToSet && typeof currentPassword !== "string") {
     return res.status(400).json({ error: "Enter your current password to change it." });
   }
 
@@ -103,7 +248,7 @@ export async function updateMe(req, res) {
   );
   const credentialsChanged = email.trim().toLowerCase() !== req.user.email.toLowerCase()
     || nick.trim() !== req.user.nick
-    || Boolean(newPassword);
+    || Boolean(passwordToSet);
   if (credentialsChanged) {
     const passwordMatches = typeof currentPassword === "string"
       && typeof rows[0]?.password_hash === "string"
@@ -114,7 +259,7 @@ export async function updateMe(req, res) {
   }
 
   try {
-    const passwordHash = newPassword ? await bcrypt.hash(newPassword, 12) : null;
+    const passwordHash = passwordToSet ? await bcrypt.hash(passwordToSet, 12) : null;
     await db.query(
       `UPDATE lietotajs
        SET email = ?, nick = ?, kontakt_informacija = ?, avatar = ?,
