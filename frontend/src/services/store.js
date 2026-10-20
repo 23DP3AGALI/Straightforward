@@ -5,6 +5,10 @@ export async function getGames() {
   return games;
 }
 
+export async function getActivity() {
+  return apiRequest("/activity");
+}
+
 export async function getGame(id) {
   const { game } = await apiRequest(`/games/${encodeURIComponent(id)}`);
   return game;

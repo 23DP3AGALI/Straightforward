@@ -1,5 +1,98 @@
 import { db, withTransaction } from "../config/db.js";
 
+export async function searchUsers(req, res) {
+  const query = typeof req.query.query === "string" ? req.query.query.trim() : "";
+  if (query.length < 2 || query.length > 50) {
+    return res.status(400).json({ error: "Enter at least 2 nickname characters." });
+  }
+  const { rows } = await db.query(
+    `SELECT u.id, u.nick, u.avatar, u.age,
+            EXISTS (SELECT 1 FROM lietotaja_bans b WHERE b.lietotajs_id = u.id
+              AND b.ir_aktivs = 'ir' AND (b.beigu_datums IS NULL OR b.beigu_datums > CURRENT_TIMESTAMP)) AS is_banned
+     FROM lietotajs u
+     WHERE LOWER(u.nick) LIKE LOWER(?)
+     ORDER BY u.nick
+     LIMIT 25`,
+    [`%${query}%`],
+  );
+  if (!rows.length) return res.json({ users: [] });
+  const ids = rows.map((user) => user.id);
+  const { rows: profiles } = await db.query(
+    `SELECT p.id, p.lietotajs_id AS userId, p.spele_id AS gameId, p.apraksts AS about,
+            g.nosaukums AS gameName
+     FROM anketa p JOIN spele g ON g.id = p.spele_id
+     WHERE p.ir_dzesta = FALSE AND p.lietotajs_id IN (${ids.map(() => "?").join(", ")})
+     ORDER BY g.nosaukums`,
+    ids,
+  );
+  const profilesByUser = new Map(ids.map((id) => [String(id), []]));
+  for (const profile of profiles) profilesByUser.get(String(profile.userId)).push(profile);
+  res.json({
+    users: rows.map((user) => ({
+      ...user,
+      age: user.age == null ? null : Number(user.age),
+      isBanned: Boolean(user.is_banned),
+      profiles: profilesByUser.get(String(user.id)),
+    })),
+  });
+}
+
+export async function updateUser(req, res) {
+  const userId = Number(req.params.userId);
+  const { nick, avatar = "" } = req.body;
+  if (!Number.isInteger(userId) || userId < 1
+    || typeof nick !== "string" || !/^[A-Za-z0-9_]{2,50}$/.test(nick.trim())) {
+    return res.status(400).json({ error: "Enter a valid nickname." });
+  }
+  const validAvatar = typeof avatar === "string" && avatar.length <= 150_000
+    && (!avatar || /^https?:\/\/\S+$/i.test(avatar)
+      || /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(avatar));
+  if (!validAvatar) return res.status(400).json({ error: "Avatar must be a supported image or HTTP(S) URL." });
+  try {
+    const result = await withTransaction(async (client) => {
+      const { rows } = await client.query(
+        "SELECT id FROM lietotajs WHERE id = ? FOR UPDATE",
+        [userId],
+      );
+      if (!rows[0]) return false;
+      await client.query("UPDATE lietotajs SET nick = ?, avatar = ? WHERE id = ?", [
+        nick.trim(), avatar || null, userId,
+      ]);
+      await client.query("UPDATE admin SET vards = ? WHERE id = ?", [nick.trim(), userId]);
+      return true;
+    });
+    if (!result) return res.status(404).json({ error: "User not found." });
+  } catch (error) {
+    if (error.code === "ER_DUP_ENTRY") return res.status(409).json({ error: "This nickname is already in use." });
+    throw error;
+  }
+  res.json({ updated: true });
+}
+
+export async function updateProfile(req, res) {
+  const profileId = Number(req.params.profileId);
+  const { about } = req.body;
+  if (!Number.isInteger(profileId) || profileId < 1
+    || typeof about !== "string" || !about.trim() || about.trim().length > 600) {
+    return res.status(400).json({ error: "Profile description must contain 1 to 600 characters." });
+  }
+  const result = await db.query(
+    `UPDATE anketa p
+     SET p.apraksts = ?, p.updated_at = CURRENT_TIMESTAMP
+     WHERE p.id = ? AND p.ir_dzesta = FALSE`,
+    [about.trim(), profileId],
+  );
+  if (!result.rowCount) {
+    const { rows } = await db.query(
+      `SELECT p.id FROM anketa p
+       WHERE p.id = ? AND p.ir_dzesta = FALSE`,
+      [profileId],
+    );
+    if (!rows[0]) return res.status(404).json({ error: "Profile not found." });
+  }
+  res.json({ updated: true });
+}
+
 export async function listReports(req, res) {
   const { rows } = await db.query(
     `SELECT r.id, r.pamatojums AS reason, r.datums AS createdAt, r.admin_id AS reviewedBy,

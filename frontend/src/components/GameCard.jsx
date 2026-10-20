@@ -36,17 +36,21 @@ export default function GameCard({ game }) {
     >
       <div className="gcard__inner">
         <div className="gcard__face gcard__front">
-          <span className="gcard__activity">
-            {t("games.activePlayers", { n: game.activePlayers || 0 })} · {t("games.openLobbies", { n: game.openLobbies || 0 })}
-          </span>
+          {game.category && <p className="gcard__category">{game.category}</p>}
+          <div className="gcard__stats">
+            <span><strong>{game.activePlayers || 0}</strong>{t("games.activeShort")}</span>
+            <span><strong>{game.openLobbies || 0}</strong>{t("games.groupsShort")}</span>
+          </div>
           <h3 className="gcard__name">{game.name}</h3>
         </div>
 
         <div className="gcard__face gcard__back">
+          {game.category && <p className="gcard__category">{game.category}</p>}
           <h3 className="gcard__name">{game.name}</h3>
-          <p className="gcard__activity">
-            {t("games.activePlayers", { n: game.activePlayers || 0 })} · {t("games.openLobbies", { n: game.openLobbies || 0 })}
-          </p>
+          <div className="gcard__stats">
+            <span><strong>{game.activePlayers || 0}</strong>{t("games.activeShort")}</span>
+            <span><strong>{game.openLobbies || 0}</strong>{t("games.groupsShort")}</span>
+          </div>
           <button className="gcard__btn" onClick={handleFind}>
             {t("games.find")}
           </button>

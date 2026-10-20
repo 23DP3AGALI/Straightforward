@@ -56,6 +56,8 @@ export default function SavedPlayers() {
         {error && <p className="saved__error" role="alert">{error}</p>}
         {loading ? <p>{t("saved.loading")}</p> : profiles.length === 0 ? (
           <div className="saved__empty">
+            <span className="saved__empty-icon" aria-hidden="true">{tab === "favorites" ? "☆" : "⌛"}</span>
+            <h2>{tab === "favorites" ? t("saved.emptyFavoritesTitle") : t("saved.emptyHistoryTitle")}</h2>
             <p>{tab === "favorites" ? t("saved.noFavorites") : t("saved.noHistory")}</p>
             <Link to="/app" className="saved__button">{t("saved.discover")}</Link>
           </div>

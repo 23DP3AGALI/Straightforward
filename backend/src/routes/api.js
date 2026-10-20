@@ -24,12 +24,14 @@ router.get("/auth/me", requireAuth, auth.me);
 router.patch("/auth/me", requireAuth, auth.updateMe);
 
 router.get("/games", games.listGames);
+router.get("/activity", games.getActivity);
 router.get("/games/:id", games.getGame);
 router.post("/games", requireAuth, requireAdmin, games.createGame);
 router.patch("/games/:id", requireAuth, requireAdmin, games.updateGame);
 router.delete("/games/:id", requireAuth, requireAdmin, games.deleteGame);
 
 router.get("/games/:gameId/profiles", requireAuth, profiles.listGameProfiles);
+router.get("/games/:gameId/incoming-likes", requireAuth, profiles.listIncomingLikes);
 router.get("/games/:gameId/profiles/me", requireAuth, profiles.getMyProfile);
 router.put("/games/:gameId/profiles/me", requireAuth, profiles.saveMyProfile);
 router.delete("/games/:gameId/profiles/me", requireAuth, profiles.deleteMyProfile);
@@ -59,6 +61,9 @@ router.post("/notifications/:notificationId/read", requireAuth, notifications.ma
 
 router.get("/admin/reports", requireAuth, requireAdmin, admin.listReports);
 router.get("/admin/bans", requireAuth, requireAdmin, admin.listBans);
+router.get("/admin/users", requireAuth, requireAdmin, admin.searchUsers);
+router.put("/admin/users/:userId", requireAuth, requireAdmin, admin.updateUser);
+router.put("/admin/profiles/:profileId", requireAuth, requireAdmin, admin.updateProfile);
 router.post("/admin/reports/:reportId/review", requireAuth, requireAdmin, admin.reviewReport);
 router.post("/admin/users/:userId/bans", requireAuth, requireAdmin, admin.banUser);
 router.delete("/admin/users/:userId/bans/:banId", requireAuth, requireAdmin, admin.liftBan);

@@ -19,6 +19,17 @@
 .admin__admin-form button:last-child { color: var(--ink); background: transparent; border: 1px solid var(--line); }
 .admin__admin-form button:disabled { opacity: .6; cursor: wait; }
 .admin__notice { color: #2ecc71; }
+.admin__user-results { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; padding: 0; list-style: none; }
+.admin__user-results button { padding: 8px 12px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; }
+.admin__user-results button.is-active { border-color: var(--red); }
+.admin__user-editor { display: grid; gap: 14px; margin-top: 16px; padding: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.admin__user-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); align-items: start; gap: 12px; }
+.admin__user-form label, .admin__profile-editor label { display: grid; gap: 6px; font-weight: 700; }
+.admin__user-editor textarea { width: 100%; padding: 9px 10px; color: var(--ink); background: var(--black); border: 1px solid var(--line); border-radius: 4px; font: inherit; resize: vertical; }
+.admin__user-editor button { width: fit-content; padding: 8px 12px; color: #fff; background: var(--red); border: 0; border-radius: 4px; font-weight: 700; }
+.admin__user-editor button:disabled { opacity: .6; cursor: wait; }
+.admin__user-avatar { width: 72px; height: 72px; border: 1px solid var(--line); border-radius: 50%; object-fit: cover; }
+.admin__profile-editor { display: grid; gap: 8px; padding: 12px 0; border-top: 1px solid var(--line); }
 .admin__moderation { margin-top: 32px; }
 .admin__moderation > h2 { padding-bottom: 10px; border-bottom: 1px solid var(--line); }
 .admin__moderation-list { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }

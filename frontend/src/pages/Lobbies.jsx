@@ -23,6 +23,14 @@ export default function Lobbies() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [now, setNow] = useState(0);
+
+  useEffect(() => {
+    const updateNow = () => setNow(Date.now());
+    updateNow();
+    const timer = window.setInterval(updateNow, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const refresh = useCallback(async () => {
     const [loadedGame, loadedLobbies] = await Promise.all([getGame(gameId), getLobbies(gameId)]);
@@ -99,7 +107,7 @@ export default function Lobbies() {
               <span className="lobbies__count">{t("lobby.openCount", { n: lobbies.length })}</span>
             </header>
             {error && <p className="lobbies__error" role="alert">{error}</p>}
-            <section className="lobbies__create">
+            <section className="lobbies__create" id="create-lobby">
               <h2>{t("lobby.createTitle")}</h2>
               <form onSubmit={submit}>
                 <label>
@@ -124,16 +132,31 @@ export default function Lobbies() {
             <section className="lobbies__section">
               <h2>{t("lobby.board")}</h2>
               {lobbies.length === 0 ? (
-                <p className="lobbies__empty">{t("lobby.empty")}</p>
+                <div className="lobbies__empty">
+                  <span aria-hidden="true">✨</span>
+                  <h3>{t("lobby.emptyTitle")}</h3>
+                  <p>{t("lobby.empty")}</p>
+                  <a href="#create-lobby">{t("lobby.createFirst")}</a>
+                </div>
               ) : (
                 <ul className="lobbies__list">
                   {lobbies.map((lobby) => {
                     const owner = String(lobby.ownerId) === String(user.id);
                     const full = lobby.playerCount >= lobby.maxPlayers;
+                    const startsSoon = lobby.startsAt
+                      && now > 0
+                      && Date.parse(lobby.startsAt) > now
+                      && Date.parse(lobby.startsAt) - now <= 60 * 60 * 1000;
                     return (
                       <li className="lobbies__card" key={lobby.id}>
                         <div className="lobbies__card-head">
                           <div>
+                            <div className="lobbies__tags">
+                              <span className={`lobbies__tag ${full ? "lobbies__tag--muted" : "lobbies__tag--open"}`}>
+                                {full ? t("lobby.full") : t("lobby.looking")}
+                              </span>
+                              {startsSoon && <span className="lobbies__tag lobbies__tag--soon">{t("lobby.startsSoon")}</span>}
+                            </div>
                             <p className="lobbies__owner">{t("lobby.hostedBy", { name: lobby.ownerNick })}</p>
                             <h3>{lobby.title}</h3>
                           </div>
@@ -142,6 +165,18 @@ export default function Lobbies() {
                           </span>
                         </div>
                         {lobby.description && <p className="lobbies__description">{lobby.description}</p>}
+                        {lobby.members?.length > 0 && (
+                          <div className="lobbies__member-row">
+                            <div className="lobbies__members" aria-label={t("lobby.memberAvatars")}>
+                              {lobby.members.map((member) => (
+                                <span key={member.id} title={member.nick} style={member.avatar ? { backgroundImage: `url("${member.avatar}")` } : undefined}>
+                                  {!member.avatar && member.nick.charAt(0).toUpperCase()}
+                                </span>
+                              ))}
+                            </div>
+                            <span>{lobby.playerCount}/{lobby.maxPlayers} {t("lobby.players")}</span>
+                          </div>
+                        )}
                         <div className="lobbies__details">
                           {lobby.rank && <span>{t("profile.rank")}: {lobby.rank}</span>}
                           {lobby.languages && <span>{t("profile.languages")}: {lobby.languages}</span>}

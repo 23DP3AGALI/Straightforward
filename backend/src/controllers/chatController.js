@@ -31,7 +31,7 @@ async function findMatch(queryable, gameId, userId, otherUserId) {
 export async function listChats(req, res) {
   const { rows } = await db.query(
     `SELECT chat_pair.gameId, g.nosaukums AS gameName,
-            other.id AS userId, other.nick, other.kontakt_informacija AS contact,
+            other.id AS userId, other.nick, other.avatar, other.kontakt_informacija AS contact,
             (SELECT m.message_text FROM chat_message m
              WHERE m.game_id = chat_pair.gameId
                AND ((m.sender_id = req_user.id AND m.recipient_id = other.id)

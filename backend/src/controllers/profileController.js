@@ -16,6 +16,7 @@ async function formatProfile(queryable, row) {
     about: row.apraksts,
     nick: row.nick,
     avatar: row.avatar || "",
+    age: row.age == null ? null : Number(row.age),
     updatedAt: row.updated_at,
     isFavorite: Boolean(row.is_favorite),
     historyAction: row.history_action || null,
@@ -25,7 +26,7 @@ async function formatProfile(queryable, row) {
 
 export async function listGameProfiles(req, res) {
   const { rows } = await db.query(
-    `SELECT p.id, p.lietotajs_id, p.spele_id, p.apraksts, p.updated_at, u.nick, u.avatar,
+    `SELECT p.id, p.lietotajs_id, p.spele_id, p.apraksts, p.updated_at, u.nick, u.avatar, u.age,
             (f.profile_id IS NOT NULL) AS is_favorite
      FROM anketa p JOIN lietotajs u ON u.id = p.lietotajs_id
      LEFT JOIN profile_favorite f ON f.profile_id = p.id AND f.user_id = ?
@@ -38,11 +39,45 @@ export async function listGameProfiles(req, res) {
   res.json({ profiles: await Promise.all(rows.map((row) => formatProfile(db, row))) });
 }
 
+export async function listIncomingLikes(req, res) {
+  const { rows } = await db.query(
+    `SELECT n.id AS notification_id, actor_profile.id, actor_profile.lietotajs_id,
+            actor_profile.spele_id, actor_profile.apraksts, actor_profile.updated_at,
+            actor.nick, actor.avatar, actor.age,
+            FALSE AS is_favorite
+     FROM notification n
+     JOIN anketa p ON p.id = n.profile_id AND p.lietotajs_id = n.recipient_id
+       AND p.spele_id = n.game_id AND p.ir_dzesta = FALSE
+     JOIN anketa actor_profile ON actor_profile.lietotajs_id = n.actor_id
+       AND actor_profile.spele_id = n.game_id AND actor_profile.ir_dzesta = FALSE
+     JOIN lietotajs actor ON actor.id = actor_profile.lietotajs_id
+     WHERE n.recipient_id = ? AND n.game_id = ? AND n.notification_type = 'like'
+       AND NOT EXISTS (
+         SELECT 1 FROM reakcija r
+         WHERE r.lietotajs_id = n.recipient_id AND r.anketa_id = actor_profile.id
+           AND r.datums >= n.created_at
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM lietotaja_bans b
+         WHERE b.lietotajs_id = actor.id AND b.ir_aktivs = 'ir'
+           AND (b.beigu_datums IS NULL OR b.beigu_datums > CURRENT_TIMESTAMP)
+       )
+     ORDER BY n.created_at DESC, n.id DESC`,
+    [req.user.id, Number(req.params.gameId)],
+  );
+  res.json({
+    profiles: await Promise.all(rows.map(async (row) => ({
+      ...(await formatProfile(db, row)),
+      notificationId: row.notification_id,
+    }))),
+  });
+}
+
 export async function getMyProfile(req, res) {
   const { rows } = await db.query(
-    `SELECT id, lietotajs_id, spele_id, apraksts, updated_at, ? AS nick, ? AS avatar
+    `SELECT id, lietotajs_id, spele_id, apraksts, updated_at, ? AS nick, ? AS avatar, ? AS age
      FROM anketa WHERE lietotajs_id = ? AND spele_id = ? AND ir_dzesta = FALSE`,
-    [req.user.nick, req.user.avatar || "", req.user.id, Number(req.params.gameId)],
+    [req.user.nick, req.user.avatar || "", req.user.age, req.user.id, Number(req.params.gameId)],
   );
   if (!rows[0]) return res.json({ profile: null });
   res.json({ profile: await formatProfile(db, rows[0]) });
@@ -95,9 +130,9 @@ export async function saveMyProfile(req, res) {
       );
     }
     const { rows } = await client.query(
-      `SELECT id, lietotajs_id, spele_id, apraksts, updated_at, ? AS nick, ? AS avatar
+      `SELECT id, lietotajs_id, spele_id, apraksts, updated_at, ? AS nick, ? AS avatar, ? AS age
        FROM anketa WHERE id = ?`,
-      [req.user.nick, req.user.avatar || "", profileId],
+      [req.user.nick, req.user.avatar || "", req.user.age, profileId],
     );
     const row = rows[0];
     return formatProfile(client, row);
@@ -120,12 +155,13 @@ export async function reactToProfile(req, res) {
   if (!["like", "dislike"].includes(type)) return res.status(400).json({ error: "Reaction must be 'like' or 'dislike'." });
   const result = await withTransaction(async (client) => {
     const { rows } = await client.query(
-      "SELECT id, lietotajs_id FROM anketa WHERE id = ? AND spele_id = ? AND ir_dzesta = FALSE",
+      `SELECT p.id, p.lietotajs_id
+       FROM anketa p JOIN lietotajs u ON u.id = p.lietotajs_id
+       WHERE p.id = ? AND p.spele_id = ? AND p.ir_dzesta = FALSE`,
       [Number(req.params.profileId), Number(req.params.gameId)],
     );
     const target = rows[0];
     if (!target || String(target.lietotajs_id) === String(req.user.id)) return null;
-
     const previous = await client.query(
       "SELECT tips FROM reakcija WHERE lietotajs_id = ? AND anketa_id = ?",
       [req.user.id, target.id],
@@ -184,7 +220,9 @@ export async function reportProfile(req, res) {
     return res.status(400).json({ error: "Report reason must contain 1 to 1000 characters." });
   }
   const { rows } = await db.query(
-    "SELECT id FROM anketa WHERE id = ? AND spele_id = ? AND ir_dzesta = FALSE AND lietotajs_id <> ?",
+    `SELECT p.id
+     FROM anketa p JOIN lietotajs u ON u.id = p.lietotajs_id
+     WHERE p.id = ? AND p.spele_id = ? AND p.ir_dzesta = FALSE AND p.lietotajs_id <> ?`,
     [Number(req.params.profileId), Number(req.params.gameId), req.user.id],
   );
   if (!rows[0]) return res.status(404).json({ error: "Profile not found." });
@@ -203,7 +241,7 @@ export async function reportProfile(req, res) {
 
 export async function listFavorites(req, res) {
   const { rows } = await db.query(
-    `SELECT p.id, p.lietotajs_id, p.spele_id, p.apraksts, p.updated_at, u.nick, u.avatar,
+    `SELECT p.id, p.lietotajs_id, p.spele_id, p.apraksts, p.updated_at, u.nick, u.avatar, u.age,
             TRUE AS is_favorite,
             g.nosaukums AS game_name, f.created_at AS saved_at
      FROM profile_favorite f
@@ -223,7 +261,7 @@ export async function listFavorites(req, res) {
 
 export async function listProfileHistory(req, res) {
   const { rows } = await db.query(
-    `SELECT p.id, p.lietotajs_id, p.spele_id, p.apraksts, p.updated_at, u.nick, u.avatar,
+    `SELECT p.id, p.lietotajs_id, p.spele_id, p.apraksts, p.updated_at, u.nick, u.avatar, u.age,
             (f.profile_id IS NOT NULL) AS is_favorite, h.action AS history_action,
             g.nosaukums AS game_name, h.created_at AS viewed_at
      FROM profile_history h

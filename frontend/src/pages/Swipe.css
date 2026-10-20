@@ -111,7 +111,7 @@
 }
 .scard__head { position: relative; z-index: 1; padding: 18px 22px; }
 .scard__nick { margin: 0; font-family: "Big Shoulders Display", sans-serif; font-weight: 900; font-size: 2.6rem; line-height: 1; }
-.scard__demo { margin: 4px 0 0; font-size: 0.8rem; color: var(--muted); }
+.scard__age { display: inline-flex; margin: 6px 0 0 9px; color: #fff; font-size: .95rem; font-weight: 700; }
 .scard__info { padding: 16px 22px 22px; }
 .scard__about { margin: 0; opacity: 0.88; overflow-wrap: anywhere; }
 .scard__chips { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }

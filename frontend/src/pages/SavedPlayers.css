@@ -14,7 +14,10 @@
 }
 .saved__tabs button[aria-selected="true"] { color: var(--ink); border-color: var(--red); }
 .saved__error { color: #ff6b73; }
-.saved__empty { padding: 30px; text-align: center; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.saved__empty { padding: 36px 24px; text-align: center; background: radial-gradient(ellipse at 50% 0%, var(--red-glow), transparent 70%), var(--surface); border: 1px dashed var(--line); border-radius: 14px; }
+.saved__empty-icon { display: block; color: var(--red); font-size: 2.4rem; line-height: 1; }
+.saved__empty h2 { margin: 10px 0 4px; font: 800 1.55rem "Big Shoulders Display", sans-serif; }
+.saved__empty p { margin: 0 0 16px; color: var(--muted); }
 .saved__list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin: 0; padding: 0; list-style: none; }
 .saved__card { padding: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
 .saved__card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }

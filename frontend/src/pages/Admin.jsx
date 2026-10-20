@@ -30,6 +30,12 @@ export default function Admin() {
   const [banReportId, setBanReportId] = useState(null);
   const [banReasons, setBanReasons] = useState({});
   const [moderationAction, setModerationAction] = useState("");
+  const [moderationQuery, setModerationQuery] = useState("");
+  const [moderationUsers, setModerationUsers] = useState([]);
+  const [selectedModerationUser, setSelectedModerationUser] = useState(null);
+  const [moderationUserDraft, setModerationUserDraft] = useState({ nick: "", avatar: "" });
+  const [profileDescriptionDrafts, setProfileDescriptionDrafts] = useState({});
+  const [userBanReason, setUserBanReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const selected = games.find((game) => String(game.id) === String(selectedId));
@@ -78,6 +84,107 @@ export default function Admin() {
     ]);
     setReports(reportResult.reports);
     setBans(banResult.bans);
+  };
+
+  const searchModerationUsers = async (event) => {
+    event.preventDefault();
+    setError("");
+    setModerationAction("search-users");
+    try {
+      const params = new URLSearchParams({ query: moderationQuery.trim() });
+      const result = await apiRequest(`/admin/users?${params}`, { auth: true });
+      setModerationUsers(result.users);
+      setSelectedModerationUser(null);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setModerationAction("");
+    }
+  };
+
+  const selectModerationUser = (user) => {
+    setSelectedModerationUser(user);
+    setModerationUserDraft({ nick: user.nick, avatar: user.avatar || "" });
+    setProfileDescriptionDrafts(Object.fromEntries(user.profiles.map((profile) => [profile.id, profile.about])));
+    setUserBanReason("");
+  };
+
+  const saveModerationUser = async (event) => {
+    event.preventDefault();
+    if (!selectedModerationUser) return;
+    setError("");
+    setModerationAction(`save-user:${selectedModerationUser.id}`);
+    try {
+      await apiRequest(`/admin/users/${encodeURIComponent(selectedModerationUser.id)}`, {
+        method: "PUT",
+        auth: true,
+        body: moderationUserDraft,
+      });
+      const updated = { ...selectedModerationUser, ...moderationUserDraft };
+      setSelectedModerationUser(updated);
+      setModerationUsers((users) => users.map((user) => (
+        String(user.id) === String(updated.id) ? updated : user
+      )));
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setModerationAction("");
+    }
+  };
+
+  const saveModerationProfile = async (profile) => {
+    const about = profileDescriptionDrafts[profile.id]?.trim();
+    if (!about) {
+      setError("Profile description cannot be empty.");
+      return;
+    }
+    setError("");
+    setModerationAction(`save-profile:${profile.id}`);
+    try {
+      await apiRequest(`/admin/profiles/${encodeURIComponent(profile.id)}`, {
+        method: "PUT",
+        auth: true,
+        body: { about },
+      });
+      const update = (user) => ({
+        ...user,
+        profiles: user.profiles.map((item) => (
+          String(item.id) === String(profile.id) ? { ...item, about } : item
+        )),
+      });
+      setSelectedModerationUser((user) => update(user));
+      setModerationUsers((users) => users.map((user) => (
+        String(user.id) === String(profile.userId) ? update(user) : user
+      )));
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setModerationAction("");
+    }
+  };
+
+  const blockSelectedUser = async (event) => {
+    event.preventDefault();
+    if (!selectedModerationUser || !userBanReason.trim()) return;
+    setError("");
+    setModerationAction(`block-user:${selectedModerationUser.id}`);
+    try {
+      await apiRequest(`/admin/users/${encodeURIComponent(selectedModerationUser.id)}/bans`, {
+        method: "POST",
+        auth: true,
+        body: { reason: userBanReason.trim() },
+      });
+      setSelectedModerationUser((user) => ({ ...user, isBanned: true }));
+      setModerationUsers((users) => users.map((user) => (
+        String(user.id) === String(selectedModerationUser.id) ? { ...user, isBanned: true } : user
+      )));
+      setUserBanReason("");
+      await refreshModeration();
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setModerationAction("");
+    }
   };
 
   useEffect(() => {
@@ -167,7 +274,7 @@ export default function Admin() {
     if (!name) return;
     setError("");
     try {
-      const game = await createGame({ name, fields: [] });
+      const game = await createGame({ name, category: "Other", fields: [] });
       setGames((current) => [...current, game]);
       setSelectedId(game.id);
       setNewName("");
@@ -197,6 +304,7 @@ export default function Admin() {
       const saved = await saveGame(selected.id, {
         name: selected.name,
         image: selected.image || "",
+        category: selected.category || "Other",
         fields: selected.fields.map((field) => ({
           ...field,
           options: field.optionsText ?? field.options ?? [],
@@ -271,6 +379,118 @@ export default function Admin() {
         </form>
         {adminNotice && <p className="admin__notice" role="status">{adminNotice}</p>}
       </section>
+      <section className="admin__moderation" aria-labelledby="user-moderation-heading">
+        <h2 id="user-moderation-heading">User and profile moderation</h2>
+        <form className="admin__admin-form" onSubmit={searchModerationUsers}>
+          <input
+            value={moderationQuery}
+            onChange={(event) => setModerationQuery(event.target.value)}
+            placeholder="Search by nickname"
+            minLength={2}
+            maxLength={50}
+            required
+          />
+          <button type="submit" disabled={moderationAction === "search-users"}>
+            {moderationAction === "search-users" ? "Searching..." : "Search users"}
+          </button>
+        </form>
+        {moderationUsers.length > 0 && (
+          <ul className="admin__user-results">
+            {moderationUsers.map((user) => (
+              <li key={user.id}>
+                <button
+                  type="button"
+                  className={String(selectedModerationUser?.id) === String(user.id) ? "is-active" : ""}
+                  onClick={() => selectModerationUser(user)}
+                >
+                  {user.nick}{user.age == null ? "" : ` · ${user.age}`}
+                  {user.isBanned ? " · Blocked" : ""}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {!moderationAction && moderationQuery.trim().length >= 2 && moderationUsers.length === 0 && (
+          <p className="admin__hint">No users found for this nickname.</p>
+        )}
+        {selectedModerationUser && (
+          <div className="admin__user-editor">
+            <form className="admin__user-form" onSubmit={saveModerationUser}>
+              <label>
+                Nickname
+                <input
+                  value={moderationUserDraft.nick}
+                  onChange={(event) => setModerationUserDraft((draft) => ({ ...draft, nick: event.target.value }))}
+                  minLength={2}
+                  maxLength={50}
+                  pattern="[A-Za-z0-9_]{2,50}"
+                  required
+                />
+              </label>
+              <label>
+                Avatar URL or data image
+                <textarea
+                  value={moderationUserDraft.avatar}
+                  onChange={(event) => setModerationUserDraft((draft) => ({ ...draft, avatar: event.target.value }))}
+                  maxLength={150000}
+                  rows={3}
+                />
+              </label>
+              {moderationUserDraft.avatar && (
+                <img className="admin__user-avatar" src={moderationUserDraft.avatar} alt={`${moderationUserDraft.nick} avatar preview`} />
+              )}
+              <button type="submit" disabled={Boolean(moderationAction)}>
+                {moderationAction === `save-user:${selectedModerationUser.id}` ? "Saving..." : "Save user"}
+              </button>
+            </form>
+            <h3>Game profiles</h3>
+            {selectedModerationUser.profiles.length === 0 ? (
+              <p className="admin__hint">This user has no active game profiles.</p>
+            ) : selectedModerationUser.profiles.map((profile) => (
+              <div className="admin__profile-editor" key={profile.id}>
+                <label>
+                  {profile.gameName} — description
+                  <textarea
+                    value={profileDescriptionDrafts[profile.id] ?? ""}
+                    onChange={(event) => setProfileDescriptionDrafts((drafts) => ({
+                      ...drafts,
+                      [profile.id]: event.target.value,
+                    }))}
+                    maxLength={600}
+                    rows={3}
+                  />
+                </label>
+                <button
+                  type="button"
+                  disabled={Boolean(moderationAction)}
+                  onClick={() => saveModerationProfile(profile)}
+                >
+                  {moderationAction === `save-profile:${profile.id}` ? "Saving..." : "Save description"}
+                </button>
+              </div>
+            ))}
+            {selectedModerationUser.isBanned ? (
+              <p className="admin__status admin__status--banned">User currently blocked. See ban history to lift the block.</p>
+            ) : (
+              <form className="admin__ban-form" onSubmit={blockSelectedUser}>
+                <label>
+                  Block this user — reason
+                  <textarea
+                    value={userBanReason}
+                    maxLength={1000}
+                    required
+                    rows={3}
+                    onChange={(event) => setUserBanReason(event.target.value)}
+                  />
+                </label>
+                <button type="submit" disabled={Boolean(moderationAction)}>
+                  {moderationAction === `block-user:${selectedModerationUser.id}` ? "Blocking..." : "Block user"}
+                </button>
+              </form>
+            )}
+          </div>
+        )}
+      </section>
       {loading ? <p>Loading games...</p> : (
         <div className="admin__body">
           <aside className="admin__list">
@@ -313,6 +533,14 @@ export default function Admin() {
                     value={selected.name}
                     maxLength={100}
                     onChange={(event) => updateGame({ name: event.target.value })}
+                  />
+                </label>
+                <label className="admin__label">
+                  Category (max 50)
+                  <input
+                    value={selected.category || ""}
+                    maxLength={50}
+                    onChange={(event) => updateGame({ category: event.target.value })}
                   />
                 </label>
                 <label className="admin__label">

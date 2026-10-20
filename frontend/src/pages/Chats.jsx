@@ -58,7 +58,12 @@ export default function Chats() {
 
       {error && <p role="alert">{error}</p>}
       {chats.length === 0 ? (
-        <p className="ch__empty">{t("chat.empty")}</p>
+        <div className="ch__empty-card">
+          <span aria-hidden="true">💬</span>
+          <h2>{t("chat.emptyTitle")}</h2>
+          <p>{t("chat.empty")}</p>
+          <Link to="/app">{t("chat.discover")}</Link>
+        </div>
       ) : (
         <ul className="ch__list">
           {chats.map((c) => (
@@ -67,13 +72,28 @@ export default function Chats() {
                 to={c.type === "lobby" ? `/app/${c.gameId}/lobbies/${c.id}/chat` : `/app/chat/${c.gameId}/${c.userId}`}
                 className="ch__item"
               >
-                <span className={`ch__avatar ${c.type === "lobby" ? "ch__avatar--group" : ""}`} aria-hidden="true">
-                  {c.type === "lobby" ? "G" : c.nick.charAt(0).toUpperCase()}
+                <span
+                  className={`ch__avatar ${c.type === "lobby" ? "ch__avatar--group" : ""}`}
+                  aria-hidden="true"
+                  style={c.type === "lobby"
+                    ? (c.gameImage ? { backgroundImage: `url("${c.gameImage}")` } : undefined)
+                    : (c.avatar ? { backgroundImage: `url("${c.avatar}")` } : undefined)}
+                >
+                  {c.type === "lobby" ? (!c.gameImage && "G") : (!c.avatar && c.nick.charAt(0).toUpperCase())}
                 </span>
                 <span className="ch__info">
                   <strong>{c.type === "lobby" ? c.title : c.nick}</strong>
                   <span className="ch__game">{c.gameName}{c.type === "lobby" ? ` · ${t("chat.group")}` : ""}</span>
                   <span className="ch__preview">{c.last ? c.last.text : c.type === "lobby" ? t("chat.groupEmpty") : t("chat.directEmpty")}</span>
+                  {c.type === "lobby" && c.members?.length > 0 && (
+                    <span className="ch__members" aria-label={t("lobby.memberAvatars")}>
+                      {c.members.slice(0, 4).map((member) => (
+                        <span key={member.id} title={member.nick} style={member.avatar ? { backgroundImage: `url("${member.avatar}")` } : undefined}>
+                          {!member.avatar && member.nick.charAt(0).toUpperCase()}
+                        </span>
+                      ))}
+                    </span>
+                  )}
                 </span>
                 {c.unread > 0 && <span className="ch__badge">{c.unread}</span>}
               </Link>

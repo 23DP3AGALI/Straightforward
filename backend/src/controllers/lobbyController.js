@@ -1,10 +1,32 @@
 import { db, withTransaction } from "../config/db.js";
 
+async function attachMemberPreviews(lobbies) {
+  if (!lobbies.length) return lobbies;
+  const ids = lobbies.map((lobby) => lobby.id);
+  const placeholders = ids.map(() => "?").join(", ");
+  const { rows } = await db.query(
+    `SELECT m.lobby_id AS lobbyId, u.id, u.nick, u.avatar
+     FROM team_lobby_member m
+     JOIN lietotajs u ON u.id = m.user_id
+     WHERE m.lobby_id IN (${placeholders})
+     ORDER BY m.joined_at, u.id`,
+    ids,
+  );
+  const membersByLobby = new Map();
+  for (const member of rows) {
+    const key = String(member.lobbyId);
+    const members = membersByLobby.get(key) || [];
+    if (members.length < 5) members.push({ id: member.id, nick: member.nick, avatar: member.avatar || "" });
+    membersByLobby.set(key, members);
+  }
+  return lobbies.map((lobby) => ({ ...lobby, members: membersByLobby.get(String(lobby.id)) || [] }));
+}
+
 export async function listMyLobbies(req, res) {
   const { rows } = await db.query(
     `SELECT l.id, l.game_id AS gameId, g.nosaukums AS gameName, l.owner_id AS ownerId,
             u.nick AS ownerNick, l.title, l.description, l.starts_at AS startsAt,
-            l.max_players AS maxPlayers,
+            l.max_players AS maxPlayers, g.attels AS gameImage,
             (SELECT COUNT(*) FROM team_lobby_member all_members WHERE all_members.lobby_id = l.id) AS playerCount,
             (SELECT message_text FROM team_lobby_message m WHERE m.lobby_id = l.id ORDER BY m.id DESC LIMIT 1) AS lastMessage,
             (SELECT created_at FROM team_lobby_message m WHERE m.lobby_id = l.id ORDER BY m.id DESC LIMIT 1) AS lastMessageAt
@@ -16,11 +38,12 @@ export async function listMyLobbies(req, res) {
      ORDER BY (l.starts_at IS NULL), l.starts_at, l.created_at DESC`,
     [req.user.id],
   );
-  res.json({ lobbies: rows.map((row) => ({
+  const lobbies = rows.map((row) => ({
     ...row,
     playerCount: Number(row.playerCount),
     maxPlayers: Number(row.maxPlayers),
-  })) });
+  }));
+  res.json({ lobbies: await attachMemberPreviews(lobbies) });
 }
 
 export async function listLobbies(req, res) {
@@ -37,12 +60,13 @@ export async function listLobbies(req, res) {
      LIMIT 50`,
     [req.user.id, Number(req.params.gameId)],
   );
-  res.json({ lobbies: rows.map((row) => ({
+  const lobbies = rows.map((row) => ({
     ...row,
     joined: Boolean(row.joined),
     playerCount: Number(row.playerCount),
     maxPlayers: Number(row.maxPlayers),
-  })) });
+  }));
+  res.json({ lobbies: await attachMemberPreviews(lobbies) });
 }
 
 export async function createLobby(req, res) {

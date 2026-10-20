@@ -13,6 +13,7 @@ function publicUser(user) {
     id: user.id,
     email: user.email,
     nick: user.nick,
+    age: user.age == null ? null : Number(user.age),
     kontakt_informacija: user.kontakt_informacija,
     avatar: user.avatar || "",
     ir_banots: user.ir_banots,
@@ -40,7 +41,7 @@ async function createEmailCode(email) {
 }
 
 export async function register(req, res) {
-  const { email, nick, kontakt_informacija = "", password } = req.body;
+  const { email, nick, kontakt_informacija = "", password, age } = req.body;
   if (typeof email !== "string" || email.trim().length > 100 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
     return res.status(400).json({ error: "Enter a valid email address." });
   }
@@ -49,6 +50,9 @@ export async function register(req, res) {
   }
   if (typeof password !== "string" || password.length < 8) {
     return res.status(400).json({ error: "Password must contain at least 8 characters." });
+  }
+  if (!Number.isInteger(Number(age)) || Number(age) < 12 || Number(age) > 99) {
+    return res.status(400).json({ error: "Age must be an integer between 12 and 99." });
   }
   if (typeof kontakt_informacija !== "string" || kontakt_informacija.length > 200) {
     return res.status(400).json({ error: "Contact information must be at most 200 characters." });
@@ -70,11 +74,12 @@ export async function register(req, res) {
     const { code, codeHash, expiresAt } = await createEmailCode(normalizedEmail);
     await db.query(
       `INSERT INTO email_registration_verification
-         (email, nick, contact, password_hash, code_hash, expires_at, last_sent_at)
-       VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+         (email, nick, age, contact, password_hash, code_hash, expires_at, last_sent_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
       [
         normalizedEmail,
         normalizedNick,
+        Number(age),
         kontakt_informacija.trim() || null,
         passwordHash,
         codeHash,
@@ -110,7 +115,7 @@ export async function verifyRegistration(req, res) {
   try {
     const user = await withTransaction(async (client) => {
       const { rows } = await client.query(
-        `SELECT email, nick, contact, password_hash, code_hash, attempts,
+        `SELECT email, nick, age, contact, password_hash, code_hash, attempts,
                 (expires_at > CURRENT_TIMESTAMP) AS is_valid
          FROM email_registration_verification
          WHERE email = ? FOR UPDATE`,
@@ -134,15 +139,19 @@ export async function verifyRegistration(req, res) {
         );
         return { status: "invalid" };
       }
+      if (!Number.isInteger(Number(pending.age)) || Number(pending.age) < 12 || Number(pending.age) > 99) {
+        await client.query("DELETE FROM email_registration_verification WHERE email = ?", [email]);
+        return { status: "age-required" };
+      }
 
       const inserted = await client.query(
-        `INSERT INTO lietotajs (email, nick, kontakt_informacija, password_hash)
-         VALUES (?, ?, ?, ?)`,
-        [pending.email, pending.nick, pending.contact, pending.password_hash],
+        `INSERT INTO lietotajs (email, nick, age, kontakt_informacija, password_hash)
+         VALUES (?, ?, ?, ?, ?)`,
+        [pending.email, pending.nick, pending.age, pending.contact, pending.password_hash],
       );
       await client.query("DELETE FROM email_registration_verification WHERE email = ?", [email]);
       const created = await client.query(
-        "SELECT id, email, nick, kontakt_informacija, avatar, ir_banots FROM lietotajs WHERE id = ?",
+        "SELECT id, email, nick, age, kontakt_informacija, avatar, ir_banots FROM lietotajs WHERE id = ?",
         [inserted.insertId],
       );
       return { status: "verified", user: { ...created.rows[0], is_admin: false } };
@@ -152,6 +161,7 @@ export async function verifyRegistration(req, res) {
     if (user.status === "expired") return res.status(400).json({ error: "Verification code expired. Request a new code." });
     if (user.status === "locked") return res.status(429).json({ error: "Too many incorrect codes. Register again to receive a new code." });
     if (user.status === "invalid") return res.status(400).json({ error: "Incorrect verification code." });
+    if (user.status === "age-required") return res.status(400).json({ error: "This registration predates age verification. Register again and enter an age from 12 to 99." });
     return res.status(201).json({ token: createToken(user.user), user: publicUser(user.user) });
   } catch (error) {
     if (error.code === "ER_DUP_ENTRY") return res.status(409).json({ error: "Email or nickname is already in use." });
@@ -199,7 +209,7 @@ export async function login(req, res) {
     return res.status(400).json({ error: "Email and password are required." });
   }
   const { rows } = await db.query(
-    `SELECT u.id, u.email, u.nick, u.kontakt_informacija, u.avatar, u.password_hash,
+    `SELECT u.id, u.email, u.nick, u.age, u.kontakt_informacija, u.avatar, u.password_hash,
             EXISTS (SELECT 1 FROM admin a WHERE a.id = u.id) AS is_admin,
             EXISTS (SELECT 1 FROM lietotaja_bans b WHERE b.lietotajs_id = u.id
               AND b.ir_aktivs = 'ir' AND (b.beigu_datums IS NULL OR b.beigu_datums > CURRENT_TIMESTAMP)) AS ir_banots
@@ -219,7 +229,7 @@ export function me(req, res) {
 }
 
 export async function updateMe(req, res) {
-  const { email, nick, contact = "", avatar = "", currentPassword, newPassword } = req.body;
+  const { email, nick, age, contact = "", avatar = "", currentPassword, newPassword } = req.body;
   const passwordToSet = newPassword === "" ? null : newPassword;
   if (typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) || email.trim().length > 100) {
     return res.status(400).json({ error: "Enter a valid email address of at most 100 characters." });
@@ -227,6 +237,9 @@ export async function updateMe(req, res) {
   if (typeof nick !== "string" || nick.trim().length < 2 || nick.trim().length > 50
     || (nick.trim() !== req.user.nick && !/^[A-Za-z0-9_]+$/.test(nick.trim()))) {
     return res.status(400).json({ error: "Nickname must contain 2 to 50 English letters, numbers, or underscores." });
+  }
+  if (!Number.isInteger(Number(age)) || Number(age) < 12 || Number(age) > 99) {
+    return res.status(400).json({ error: "Age must be an integer between 12 and 99." });
   }
   if (typeof contact !== "string" || contact.length > 200) {
     return res.status(400).json({ error: "Contact information must be at most 200 characters." });
@@ -262,11 +275,11 @@ export async function updateMe(req, res) {
     const passwordHash = passwordToSet ? await bcrypt.hash(passwordToSet, 12) : null;
     await db.query(
       `UPDATE lietotajs
-       SET email = ?, nick = ?, kontakt_informacija = ?, avatar = ?,
+       SET email = ?, nick = ?, age = ?, kontakt_informacija = ?, avatar = ?,
            password_hash = COALESCE(?, password_hash)
        WHERE id = ?`,
       [
-        email.trim().toLowerCase(), nick.trim(), contact.trim() || null,
+        email.trim().toLowerCase(), nick.trim(), Number(age), contact.trim() || null,
         avatar || null, passwordHash, req.user.id,
       ],
     );
@@ -278,6 +291,7 @@ export async function updateMe(req, res) {
     ...req.user,
     email: email.trim().toLowerCase(),
     nick: nick.trim(),
+    age: Number(age),
     kontakt_informacija: contact.trim() || null,
     avatar: avatar || "",
   };

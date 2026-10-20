@@ -20,11 +20,3 @@ export async function markNotificationRead(notificationId) {
     auth: true,
   });
 }
-
-export async function likeBack(notification) {
-  if (!notification.actorProfileId) throw new Error("This user no longer has an active profile.");
-  return apiRequest(
-    `/games/${encodeURIComponent(notification.gameId)}/profiles/${encodeURIComponent(notification.actorProfileId)}/reactions`,
-    { method: "POST", auth: true, body: { type: "like" } },
-  );
-}

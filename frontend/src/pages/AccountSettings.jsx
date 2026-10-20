@@ -14,6 +14,7 @@ export default function AccountSettings() {
   const [values, setValues] = useState({
     email: user?.email || "",
     nick: user?.nick || "",
+    age: user?.age ?? "",
     contact: user?.kontakt_informacija || "",
     avatar: user?.avatar || "",
     currentPassword: "",
@@ -32,6 +33,7 @@ export default function AccountSettings() {
           ...current,
           email: freshUser.email || "",
           nick: freshUser.nick || "",
+          age: freshUser.age ?? "",
           contact: freshUser.kontakt_informacija || "",
           avatar: freshUser.avatar || "",
         }));
@@ -119,6 +121,19 @@ export default function AccountSettings() {
                 required
               />
               <span className="settings__hint">{t("settings.nicknameHint")}</span>
+            </label>
+            <label>
+              {t("settings.age")}
+              <input
+                type="number"
+                name="age"
+                min="12"
+                max="99"
+                step="1"
+                value={values.age}
+                onChange={change}
+                required
+              />
             </label>
             <label>
               {t("settings.email")}

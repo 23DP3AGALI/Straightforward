@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, Navigate, useParams } from "react-router-dom";
+import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
 import ChatLink from "../components/ChatLink";
 import NotificationBell from "../components/NotificationBell";
 import { getCurrentUser } from "../services/auth";
-import { setProfileFavorite, getProfile } from "../services/profiles";
+import { setProfileFavorite, getProfile, getIncomingLikes } from "../services/profiles";
 import { getGame } from "../services/store";
 import { getFeed, react, resetReactions } from "../services/swipe";
 import { useI18n } from "../i18n/context";
@@ -20,6 +20,9 @@ function fallbackBg(seed) {
 export default function Swipe() {
   const { t } = useI18n();
   const { gameId } = useParams();
+  const [searchParams] = useSearchParams();
+  const prioritizeLikes = searchParams.get("likes") === "1";
+  const preferredLikedProfileId = searchParams.get("likedProfileId");
   const [game, setGame] = useState(null);
   const [feed, setFeed] = useState([]);
   const [ownProfile, setOwnProfile] = useState(null);
@@ -34,7 +37,22 @@ export default function Swipe() {
   useEffect(() => {
     let active = true;
     if (!getCurrentUser()) return undefined;
-    Promise.all([getGame(gameId), getProfile(gameId), getFeed(gameId)])
+    const feedRequest = prioritizeLikes
+      ? Promise.all([getFeed(gameId), getIncomingLikes(gameId)]).then(([loadedFeed, likedProfiles]) => {
+        if (preferredLikedProfileId) {
+          const preferredIndex = likedProfiles.findIndex((profile) => (
+            String(profile.profileId) === preferredLikedProfileId
+          ));
+          if (preferredIndex > 0) likedProfiles.unshift(likedProfiles.splice(preferredIndex, 1)[0]);
+        }
+        const likedIds = new Set(likedProfiles.map((profile) => String(profile.id)));
+        return [
+          ...likedProfiles,
+          ...loadedFeed.filter((profile) => !likedIds.has(String(profile.profileId))),
+        ];
+      })
+      : getFeed(gameId);
+    Promise.all([getGame(gameId), getProfile(gameId), feedRequest])
       .then(([loadedGame, profile, loadedFeed]) => {
         if (!active) return;
         setGame(loadedGame);
@@ -51,7 +69,7 @@ export default function Swipe() {
       active = false;
       clearTimeout(timer.current);
     };
-  }, [gameId]);
+  }, [gameId, prioritizeLikes, preferredLikedProfileId]);
 
   if (!getCurrentUser()) return <Navigate to="/login" replace />;
   if (loading) return <p>Loading profiles...</p>;
@@ -95,7 +113,23 @@ export default function Swipe() {
   const startOver = async () => {
     resetReactions(gameId);
     try {
-      setFeed(await getFeed(gameId));
+      const loadedFeed = await getFeed(gameId);
+      if (prioritizeLikes) {
+        const likedProfiles = await getIncomingLikes(gameId);
+        if (preferredLikedProfileId) {
+          const preferredIndex = likedProfiles.findIndex((profile) => (
+            String(profile.profileId) === preferredLikedProfileId
+          ));
+          if (preferredIndex > 0) likedProfiles.unshift(likedProfiles.splice(preferredIndex, 1)[0]);
+        }
+        const likedIds = new Set(likedProfiles.map((profile) => String(profile.id)));
+        setFeed([
+          ...likedProfiles,
+          ...loadedFeed.filter((profile) => !likedIds.has(String(profile.profileId))),
+        ]);
+      } else {
+        setFeed(loadedFeed);
+      }
       setError("");
     } catch (requestError) {
       setError(requestError.message);
@@ -139,7 +173,7 @@ export default function Swipe() {
         <div className="sw__filters">
           <label className="sw__search-label">
             {t("swipe.filters")}
-            <span>{t("swipe.filterCount", { n: filteredFeed.length })}</span>
+            <span>{t("swipe.filterCount", { n: Math.max(0, filteredFeed.length - index) })}</span>
             <input
               type="search"
               aria-label={t("swipe.search")}
@@ -174,6 +208,7 @@ export default function Swipe() {
                 <span className="scard__game">{game.name}</span>
                 <div className="scard__head">
                   <h2 className="scard__nick">{current.nick}</h2>
+                  {current.age != null && <span className="scard__age">{t("profile.age", { age: current.age })}</span>}
                 </div>
               </div>
 
@@ -220,9 +255,9 @@ export default function Swipe() {
           </>
         ) : (
           <div className="sw__empty">
-            <h2>{feed.length > 0 ? t("swipe.noFilterResults") : t("swipe.everyone")}</h2>
-            <p>{feed.length > 0 ? t("swipe.adjustFilters") : t("swipe.noMore")}</p>
-            {feed.length > 0 ? (
+            <h2>{normalizedQuery && filteredFeed.length === 0 ? t("swipe.noFilterResults") : t("swipe.everyone")}</h2>
+            <p>{normalizedQuery && filteredFeed.length === 0 ? t("swipe.adjustFilters") : t("swipe.noMore")}</p>
+            {normalizedQuery && filteredFeed.length === 0 ? (
               <button type="button" className="sw__btn sw__btn--main" onClick={() => { updateQuery(""); }}>
                 {t("swipe.clearFilters")}
               </button>

@@ -1,18 +1,18 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { getCurrentUser } from "../services/auth";
+import { useI18n } from "../i18n/context";
 import {
   getNotifications,
-  likeBack,
   markAllNotificationsRead,
   markNotificationRead,
 } from "../services/notifications";
 import "./Notifications.css";
 
 export default function Notifications() {
+  const { t } = useI18n();
   const [notifications, setNotifications] = useState([]);
   const [error, setError] = useState("");
-  const [status, setStatus] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -46,18 +46,13 @@ export default function Notifications() {
     }
   };
 
-  const respondToLike = async (notification) => {
+  const viewLikedProfile = async (notification) => {
     try {
-      const result = await likeBack(notification);
       await markNotificationRead(notification.id);
       setNotifications((items) => items.map((item) => (
         item.id === notification.id ? { ...item, isRead: true } : item
       )));
-      if (result.match) {
-        navigate(`/app/chat/${notification.gameId}/${notification.actorId}`);
-      } else {
-        setStatus(`You liked ${notification.actorNick} back. A chat opens when they like your profile.`);
-      }
+      navigate(`/app/${notification.gameId}/swipe?likes=1&likedProfileId=${encodeURIComponent(notification.actorProfileId)}`);
     } catch (requestError) {
       setError(requestError.message);
     }
@@ -70,7 +65,6 @@ export default function Notifications() {
       <Link to="/app" className="nt__link">Back to games</Link>
       <h1 className="nt__title">Notifications</h1>
       {error && <p className="nt__empty" role="alert">{error}</p>}
-      {status && <p className="nt__empty" role="status">{status}</p>}
       {notifications.length === 0 ? (
         <p className="nt__empty">No notifications yet. You will see new likes and chat messages here.</p>
       ) : (
@@ -88,8 +82,12 @@ export default function Notifications() {
               <p className="nt__meta">{notification.gameName}</p>
               <div className="nt__actions">
                 {notification.type === "like" && (
-                  <button className="nt__btn nt__btn--like" onClick={() => respondToLike(notification)}>
-                    Like back
+                  <button
+                    className="nt__btn nt__btn--like"
+                    disabled={!notification.actorProfileId}
+                    onClick={() => viewLikedProfile(notification)}
+                  >
+                    {t("notifications.viewProfile")}
                   </button>
                 )}
                 {(notification.type === "match" || notification.type === "message") && (

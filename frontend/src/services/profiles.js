@@ -46,6 +46,23 @@ export async function getProfilesOfGame(gameId) {
   return profiles;
 }
 
+export async function getIncomingLikes(gameId) {
+  const { profiles } = await apiRequest(`/games/${encodeURIComponent(gameId)}/incoming-likes`, {
+    auth: true,
+  });
+  const uniqueProfiles = new Map();
+  for (const profile of profiles) {
+    if (!uniqueProfiles.has(String(profile.id))) {
+      uniqueProfiles.set(String(profile.id), {
+        ...profile,
+        profileId: profile.id,
+        photo: profile.avatar || "",
+      });
+    }
+  }
+  return [...uniqueProfiles.values()];
+}
+
 export async function getFavoriteProfiles() {
   const { profiles } = await apiRequest("/profiles/favorites", { auth: true });
   return profiles;

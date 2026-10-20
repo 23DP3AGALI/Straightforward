@@ -71,6 +71,18 @@ Backend uses Node.js, Express, and MySQL 8+ (or a compatible MariaDB release).
    mysql -u root -p straightforward < database\migrations\008_email_verification.sql
    ```
 
+   To add game categories, apply:
+
+   ```cmd
+   mysql -u root -p straightforward < database\migrations\009_add_game_categories.sql
+   ```
+
+   To mark single-player games and generated demo accounts, apply:
+
+   ```cmd
+   mysql -u root -p straightforward < database\migrations\010_multiplayer_demo_profiles.sql
+   ```
+
 3. In `backend`, create the local environment file:
 
    ```powershell
@@ -111,6 +123,32 @@ Backend uses Node.js, Express, and MySQL 8+ (or a compatible MariaDB release).
    ```
 
    The API listens on `http://localhost:3000`; check `GET /api/health`.
+
+   After the API starts and creates the bootstrap administrator, populate the
+   catalog with multiplayer games, category artwork, and game-specific profile fields:
+
+   ```powershell
+   npm run seed:games
+   ```
+
+   The seed is safe to rerun: it adds missing games and fields, updates
+   categories, and fills missing game images without replacing custom images
+   or fields. It marks single-player titles as hidden from game search and
+   creates 20 clearly labeled demo profiles per multiplayer game. Demo accounts
+   use reserved `.invalid` email addresses and random, undisclosed passwords.
+   Administrators can find and edit these records in user moderation; rerunning
+   the seed preserves edited demo nicknames, avatars, profile descriptions, and
+   existing field values.
+
+   Apply migration `011_age_and_admin_profile_tools.sql` before deploying the
+   age-validated registration and admin user/profile moderation updates:
+
+   ```powershell
+   mysql -u root -p straightforward < ..\database\migrations\011_age_and_admin_profile_tools.sql
+   ```
+
+   New accounts must provide an age from 12 through 99. Existing users can set
+   their age in account settings; the same range is enforced by the API.
 
 5. In a second terminal opened in `frontend`, run:
 

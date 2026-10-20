@@ -13,7 +13,7 @@ export async function requireAuth(req, res, next) {
   }
 
   const { rows } = await db.query(
-    `SELECT u.id, u.email, u.nick, u.kontakt_informacija, u.avatar,
+    `SELECT u.id, u.email, u.nick, u.kontakt_informacija, u.avatar, u.age,
             EXISTS (SELECT 1 FROM lietotaja_bans b WHERE b.lietotajs_id = u.id
               AND b.ir_aktivs = 'ir' AND (b.beigu_datums IS NULL OR b.beigu_datums > CURRENT_TIMESTAMP)) AS is_banned,
             EXISTS (SELECT 1 FROM admin a WHERE a.id = u.id) AS is_admin

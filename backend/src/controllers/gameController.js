@@ -4,7 +4,7 @@ const toDbType = { text: "teksts", number: "skaitlis", select: "izvele", checkbo
 const fromDbType = Object.fromEntries(Object.entries(toDbType).map(([key, value]) => [value, key]));
 
 async function gameWithFields(queryable, id) {
-  const gameResult = await queryable.query("SELECT id, nosaukums, attels FROM spele WHERE id = ?", [id]);
+  const gameResult = await queryable.query("SELECT id, nosaukums, attels, category, is_multiplayer FROM spele WHERE id = ?", [id]);
   const game = gameResult.rows[0];
   if (!game) return null;
   const fieldsResult = await queryable.query(
@@ -30,6 +30,8 @@ async function gameWithFields(queryable, id) {
     id: game.id,
     name: game.nosaukums,
     image: game.attels,
+    category: game.category,
+    isMultiplayer: Boolean(game.is_multiplayer),
     fields: [...fieldsById.values()].map((field) => ({
       ...field,
       optionsText: field.options.join(", "),
@@ -41,6 +43,7 @@ function validateGame(body, requireName = true) {
   if (requireName && (typeof body.name !== "string" || !body.name.trim())) return "Game name is required.";
   if (body.name != null && typeof body.name !== "string") return "Game name must be text.";
   if (body.name != null && body.name.trim().length > 100) return "Game name must be at most 100 characters.";
+  if (body.category != null && (typeof body.category !== "string" || body.category.trim().length > 50)) return "Game category must be at most 50 characters.";
   if (body.image != null && (typeof body.image !== "string" || body.image.length > 500)) return "Image URL must be at most 500 characters.";
   if (body.fields != null && !Array.isArray(body.fields)) return "Fields must be an array.";
   for (const field of body.fields || []) {
@@ -99,6 +102,7 @@ export async function listGames(req, res) {
   const { rows: activity } = await db.query(
     `SELECT g.id,
             (SELECT COUNT(*) FROM anketa p
+             JOIN lietotajs pu ON pu.id = p.lietotajs_id
              WHERE p.spele_id = g.id AND p.ir_dzesta = FALSE
                AND NOT EXISTS (
                  SELECT 1 FROM lietotaja_bans b
@@ -107,7 +111,7 @@ export async function listGames(req, res) {
                ))
               AS active_players,
             (SELECT COUNT(*) FROM team_lobby l
-             WHERE l.game_id = g.id AND l.status = 'open') AS open_lobbies
+             WHERE l.game_id = g.id AND l.status = 'open' AND g.is_multiplayer = TRUE) AS open_lobbies
      FROM spele g`,
   );
   const activityByGame = new Map(activity.map((row) => [String(row.id), {
@@ -122,6 +126,46 @@ export async function listGames(req, res) {
   });
 }
 
+export async function getActivity(req, res) {
+  const [{ rows: totals }, { rows: recentLobbies }] = await Promise.all([
+    db.query(
+      `SELECT
+         (SELECT COUNT(*) FROM anketa p
+          JOIN lietotajs pu ON pu.id = p.lietotajs_id
+          JOIN spele community_game ON community_game.id = p.spele_id AND community_game.is_multiplayer = TRUE
+          WHERE p.ir_dzesta = FALSE AND NOT EXISTS (
+            SELECT 1 FROM lietotaja_bans b
+            WHERE b.lietotajs_id = p.lietotajs_id AND b.ir_aktivs = 'ir'
+              AND (b.beigu_datums IS NULL OR b.beigu_datums > CURRENT_TIMESTAMP)
+          )) AS activeProfiles,
+         (SELECT COUNT(*) FROM team_lobby l
+          JOIN spele lobby_game ON lobby_game.id = l.game_id AND lobby_game.is_multiplayer = TRUE
+          WHERE l.status = 'open') AS openLobbies`,
+    ),
+    db.query(
+      `SELECT l.id, l.game_id AS gameId, g.nosaukums AS gameName, g.attels AS gameImage,
+              l.title, l.description, l.starts_at AS startsAt, l.max_players AS maxPlayers,
+              u.nick AS ownerNick,
+              (SELECT COUNT(*) FROM team_lobby_member m WHERE m.lobby_id = l.id) AS playerCount
+       FROM team_lobby l
+       JOIN spele g ON g.id = l.game_id
+       JOIN lietotajs u ON u.id = l.owner_id
+       WHERE l.status = 'open' AND g.is_multiplayer = TRUE
+       ORDER BY l.created_at DESC
+       LIMIT 4`,
+    ),
+  ]);
+  res.json({
+    activeProfiles: Number(totals[0].activeProfiles),
+    openLobbies: Number(totals[0].openLobbies),
+    recentLobbies: recentLobbies.map((lobby) => ({
+      ...lobby,
+      playerCount: Number(lobby.playerCount),
+      maxPlayers: Number(lobby.maxPlayers),
+    })),
+  });
+}
+
 export async function getGame(req, res) {
   const game = await gameWithFields(db, Number(req.params.id));
   if (!game) return res.status(404).json({ error: "Game not found." });
@@ -133,8 +177,8 @@ export async function createGame(req, res) {
   if (error) return res.status(400).json({ error });
   const game = await withTransaction(async (client) => {
     const inserted = await client.query(
-      "INSERT INTO spele (nosaukums, attels, admin_id) VALUES (?, ?, ?)",
-      [req.body.name.trim(), req.body.image || null, req.user.id],
+      "INSERT INTO spele (nosaukums, attels, category, admin_id) VALUES (?, ?, ?, ?)",
+      [req.body.name.trim(), req.body.image || null, req.body.category?.trim() || "Other", req.user.id],
     );
     if (req.body.fields) await syncFields(client, inserted.insertId, req.body.fields);
     return gameWithFields(client, inserted.insertId);
@@ -151,9 +195,16 @@ export async function updateGame(req, res) {
     if (!existing.rows[0]) return null;
     await client.query(
       `UPDATE spele SET nosaukums = COALESCE(?, nosaukums),
-                        attels = CASE WHEN ? THEN ? ELSE attels END
+                        attels = CASE WHEN ? THEN ? ELSE attels END,
+                        category = COALESCE(?, category)
        WHERE id = ?`,
-      [req.body.name?.trim() || null, Object.hasOwn(req.body, "image"), req.body.image || null, id],
+      [
+        req.body.name?.trim() || null,
+        Object.hasOwn(req.body, "image"),
+        req.body.image || null,
+        typeof req.body.category === "string" ? req.body.category.trim() : null,
+        id,
+      ],
     );
     if (req.body.fields) await syncFields(client, id, req.body.fields);
     return gameWithFields(client, id);

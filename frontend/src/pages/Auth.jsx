@@ -12,7 +12,7 @@ export default function Auth({ isRegister }) {
   const [verificationEmail, setVerificationEmail] = useState("");
   const [verificationStep, setVerificationStep] = useState(false);
   const [resending, setResending] = useState(false);
-  const [values, setValues] = useState({ email: "", nick: "", contact: "", password: "" });
+  const [values, setValues] = useState({ email: "", nick: "", contact: "", password: "", age: "" });
 
   if (getCurrentUser()) return <Navigate to="/app" replace />;
 
@@ -29,6 +29,7 @@ export default function Auth({ isRegister }) {
         ? register({
             email: values.email,
             nick: values.nick,
+            age: Number(values.age),
             kontakt_informacija: values.contact,
             password: values.password,
           })
@@ -132,6 +133,19 @@ export default function Auth({ isRegister }) {
                   pattern="[A-Za-z0-9_]{2,50}"
                   title="Use 2 to 50 English letters, numbers, or underscores."
                   value={values.nick}
+                  onChange={update}
+                  required
+                />
+              </label>
+              <label>
+                {t("auth.age")}
+                <input
+                  type="number"
+                  name="age"
+                  min="12"
+                  max="99"
+                  step="1"
+                  value={values.age}
                   onChange={update}
                   required
                 />
