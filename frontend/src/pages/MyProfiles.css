@@ -4,6 +4,7 @@
   padding: 40px 20px 80px;
 }
 .mp__link { color: var(--muted); border-bottom: 1px solid var(--red); }
+.mp__settings-link { float: right; color: var(--muted); border-bottom: 1px solid var(--red); }
 .mp__title {
   margin: 24px 0 0;
   font-family: "Big Shoulders Display", sans-serif;
@@ -20,7 +21,7 @@
 }
 .mp__card {
   padding: 20px;
-  background: #0d0d0d;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
 }
@@ -63,3 +64,8 @@
 .mp__btn--main:hover { background: #ff2f3b; }
 .mp__empty { padding: 40px 0; text-align: center; color: var(--muted); }
 .mp__empty .mp__btn { display: inline-block; margin-top: 8px; }
+.mp__groups { margin-top: 42px; }
+.mp__groups h2 { margin: 0 0 14px; font: 900 2rem "Big Shoulders Display", sans-serif; }
+.mp__groups-empty, .mp__group-game { color: var(--muted); }
+.mp__group-game { margin: 6px 0 0; }
+.mp__card > .mp__btn { display: inline-block; margin-top: 14px; }

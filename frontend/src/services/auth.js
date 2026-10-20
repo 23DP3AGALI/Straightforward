@@ -30,6 +30,22 @@ export function getCurrentUser() {
   }
 }
 
+export function updateCurrentUser(user) {
+  localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+  window.dispatchEvent(new CustomEvent("sf:user-updated", { detail: user }));
+  return user;
+}
+
+export async function refreshCurrentUser() {
+  const { user } = await apiRequest("/auth/me", { auth: true });
+  return updateCurrentUser(user);
+}
+
+export async function updateAccount(details) {
+  const { user } = await apiRequest("/auth/me", { method: "PATCH", auth: true, body: details });
+  return updateCurrentUser(user);
+}
+
 export function logout() {
   clearToken();
   localStorage.removeItem(SESSION_KEY);

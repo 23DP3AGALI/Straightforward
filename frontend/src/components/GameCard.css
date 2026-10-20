@@ -25,6 +25,7 @@
 }
 
 .gcard__face {
+  color: #fff;
   position: absolute;
   inset: 0;
   display: flex;
@@ -54,12 +55,16 @@
   justify-content: center;
   align-items: center;
   text-align: center;
-  gap: 18px;
+  gap: 10px;
   background:
     linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.75)),
     var(--img) center / cover no-repeat,
     linear-gradient(160deg, var(--red-deep), #000);
 }
+.gcard__activity { margin: 0; color: rgba(255,255,255,.8); font-size: .8rem; font-weight: 600; text-align: center; }
+.gcard__front .gcard__activity { margin-bottom: 8px; text-align: left; }
+.gcard__activity { margin: 0; color: rgba(255,255,255,.8); font-size: .8rem; font-weight: 600; }
+.gcard__front .gcard__activity { margin-bottom: 8px; }
 
 .gcard__name {
   margin: 0;
@@ -85,3 +90,5 @@
   background: #ff2f3b;
   transform: translateY(-1px);
 }
+.gcard__btn--secondary { background: rgba(0,0,0,.3); border: 1px solid rgba(255,255,255,.6); box-shadow: none; }
+.gcard__btn--secondary { background: rgba(0,0,0,.3); border: 1px solid rgba(255,255,255,.6); box-shadow: none; }

@@ -1,0 +1,41 @@
+.saved {
+  min-height: calc(100vh - 70px);
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 36px 20px 80px;
+}
+.saved__back { color: var(--muted); border-bottom: 1px solid var(--red); }
+.saved h1 { margin: 20px 0 4px; font: 900 clamp(2rem, 6vw, 3.5rem) "Big Shoulders Display", sans-serif; }
+.saved__intro { margin: 0; color: var(--muted); }
+.saved__tabs { display: flex; gap: 8px; margin: 26px 0 20px; border-bottom: 1px solid var(--line); }
+.saved__tabs button {
+  padding: 10px 14px; color: var(--muted); background: none; border: 0;
+  border-bottom: 2px solid transparent; font: inherit; cursor: pointer;
+}
+.saved__tabs button[aria-selected="true"] { color: var(--ink); border-color: var(--red); }
+.saved__error { color: #ff6b73; }
+.saved__empty { padding: 30px; text-align: center; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.saved__list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin: 0; padding: 0; list-style: none; }
+.saved__card { padding: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.saved__card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.saved__avatar {
+  display: grid;
+  flex: 0 0 52px;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  color: #fff;
+  background-color: var(--red);
+  background-position: center;
+  background-size: cover;
+  border-radius: 50%;
+  font-weight: 900;
+}
+.saved__card h2 { margin: 2px 0 0; font: 800 1.6rem "Big Shoulders Display", sans-serif; }
+.saved__game { margin: 0; color: var(--red); font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+.saved__remove { padding: 6px 10px; color: var(--muted); background: none; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; }
+.saved__action { color: var(--muted); font-size: .85rem; }
+.saved__about { color: var(--muted); overflow-wrap: anywhere; }
+.saved__tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.saved__tags span { padding: 4px 8px; background: var(--red-glow); border: 1px solid var(--line); border-radius: 20px; font-size: .8rem; }
+.saved__button { display: inline-block; padding: 8px 12px; color: white; background: var(--red); border-radius: 5px; font-weight: 700; }

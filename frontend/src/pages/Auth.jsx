@@ -63,6 +63,9 @@ export default function Auth({ isRegister }) {
                   name="nick"
                   autoComplete="nickname"
                   maxLength={50}
+                  minLength={2}
+                  pattern="[A-Za-z0-9_]{2,50}"
+                  title="Use 2 to 50 English letters, numbers, or underscores."
                   value={values.nick}
                   onChange={update}
                   required

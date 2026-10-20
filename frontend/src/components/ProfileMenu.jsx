@@ -1,18 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { logout } from "../services/auth";
+import { useI18n } from "../i18n/context";
 import "./ProfileMenu.css";
 
 // Кнопка «Profile» с выпадающим меню.
-// Админ: Admin panel. Обычный пользователь: My profiles.
+// Показывает личные анкеты и, для администратора, ссылку на панель управления.
 export default function ProfileMenu({ user }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const navigate = useNavigate();
-  const location = useLocation();
-
-  // закрываем меню при переходе на другую страницу
-  useEffect(() => setOpen(false), [location.pathname]);
 
   useEffect(() => {
     if (!open) return;
@@ -43,27 +41,29 @@ export default function ProfileMenu({ user }) {
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
-        <span className="pm__avatar" aria-hidden="true">
-          {user.nick.charAt(0).toUpperCase()}
+      <span className="pm__avatar" aria-hidden="true" style={user.avatar ? { backgroundImage: `url("${user.avatar}")` } : undefined}>
+        {!user.avatar && user.nick.charAt(0).toUpperCase()}
         </span>
-        Profile
+        {t("nav.profile")}
         <span className={`pm__caret ${open ? "pm__caret--up" : ""}`} aria-hidden="true" />
       </button>
 
       {open && (
         <div className="pm__menu" role="menu">
           <div className="pm__user">{user.nick}</div>
-          {user.isAdmin ? (
-            <Link to="/admin" className="pm__item" role="menuitem">
-              Admin panel
-            </Link>
-          ) : (
-            <Link to="/app/profiles" className="pm__item" role="menuitem">
-              My profiles
+          <Link to="/app/profiles" className="pm__item" role="menuitem" onClick={() => setOpen(false)}>
+            {t("nav.myProfiles")}
+          </Link>
+          <Link to="/app/settings" className="pm__item" role="menuitem" onClick={() => setOpen(false)}>
+            {t("nav.settings")}
+          </Link>
+          {Boolean(user.isAdmin) && (
+            <Link to="/admin" className="pm__item" role="menuitem" onClick={() => setOpen(false)}>
+              {t("nav.admin")}
             </Link>
           )}
           <button type="button" className="pm__item pm__item--out" role="menuitem" onClick={signOut}>
-            Sign out
+            {t("nav.signOut")}
           </button>
         </div>
       )}

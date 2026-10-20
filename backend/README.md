@@ -46,6 +46,25 @@ Backend uses Node.js, Express, and MySQL 8+ (or a compatible MariaDB release).
    available to both users after a mutual like. Incoming likes and messages are
    shown on the Notifications page.
 
+   To add teammate preferences, saved-player history, team lobbies, and game
+   activity counts, apply this migration once after the previous migrations:
+
+   ```cmd
+   mysql -u root -p straightforward < database\migrations\005_team_finding_features.sql
+   ```
+
+   To enable the group chat inside each team lobby, apply:
+
+   ```cmd
+   mysql -u root -p straightforward < database\migrations\006_team_lobby_chat.sql
+   ```
+
+   To enable account avatars, apply:
+
+   ```cmd
+   mysql -u root -p straightforward < database\migrations\007_user_profile_settings.sql
+   ```
+
 3. In `backend`, create the local environment file:
 
    ```powershell
@@ -88,12 +107,19 @@ Backend uses Node.js, Express, and MySQL 8+ (or a compatible MariaDB release).
 
 ## Routes
 
-- `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`
+- `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`, and `PATCH /api/auth/me` for account settings
 - `GET /api/games`, `GET /api/games/:id`; admins can create, edit, and delete games at `/api/games`
 - `GET /api/games/:gameId/profiles`, `GET|PUT|DELETE /api/games/:gameId/profiles/me`
+- `GET /api/profiles/favorites`, `PUT|DELETE /api/profiles/favorites/:profileId`, and `GET /api/profiles/history`
+- `GET|POST /api/games/:gameId/lobbies`, plus join, leave, and owner-close operations under `/api/games/:gameId/lobbies/:lobbyId`
+- `GET|POST /api/lobbies/:lobbyId/messages` for a group chat available only to current members of an open lobby
+- `GET /api/lobbies/mine` for the current user's open joined groups
 - `POST /api/games/:gameId/profiles/:profileId/reactions` with `{ "type": "like" | "dislike" }`
 - `POST /api/games/:gameId/profiles/:profileId/reports` with `{ "reason": "..." }`
 - Admin moderation: `GET /api/admin/reports`, `POST /api/admin/reports/:reportId/review`, and ban/lift-ban routes under `/api/admin/users/:userId/bans`
 
 Registration and login return `{ "token", "user" }`. Game fields use API types
 `text`, `number`, `select`, and `checkbox`; profile values are keyed by field ID.
+Each game-specific profile contains a description and values for that game's
+administrator-configured fields. Individual field values are limited to 200
+characters; the profile description is limited to 600 characters.

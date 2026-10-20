@@ -24,7 +24,11 @@ export async function apiRequest(path, { method = "GET", body, auth = false } = 
   if (response.status === 204) return null;
 
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload.error || `API request failed (${response.status}).`);
+  if (!response.ok) {
+    const error = new Error(payload.error || `API request failed (${response.status}).`);
+    error.status = response.status;
+    throw error;
+  }
   return payload;
 }
 

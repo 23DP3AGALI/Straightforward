@@ -1,55 +1,55 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import GameCard from "../components/GameCard";
-import ChatLink from "../components/ChatLink";
-import NotificationBell from "../components/NotificationBell";
-import ProfileMenu from "../components/ProfileMenu";
-import { getCurrentUser } from "../services/auth";
+import Navbar from "../components/Navbar";
+import { useI18n } from "../i18n/context";
 import { getGames } from "../services/store";
 import "./Games.css";
 
 export default function Games() {
+  const { t } = useI18n();
   const [games, setGames] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+
   useEffect(() => {
     getGames()
       .then(setGames)
       .catch((requestError) => setError(requestError.message))
       .finally(() => setLoading(false));
   }, []);
-  const user = getCurrentUser();
+
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return q ? games.filter((g) => g.name.toLowerCase().includes(q)) : games;
+  }, [games, query]);
 
   return (
     <>
-      <header className="gh">
-        <Link to="/" className="gh__brand" aria-label="StraightForward home">
-          SF
-        </Link>
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          {user ? (
-            <>
-              <ChatLink />
-              <NotificationBell />
-              <ProfileMenu user={user} />
-            </>
-          ) : (
-            <Link to="/login" className="gh__login">Login</Link>
-          )}
-        </div>
-      </header>
+      <Navbar app />
 
       <main className="games">
-        <h1 className="games__title">Choose your game</h1>
-        <p className="games__sub">
-          Pick a game and we'll show you players who fit your playstyle.
-        </p>
+        <h1 className="games__title">{t("games.title")}</h1>
+        <p className="games__sub">{t("games.sub")}</p>
+
+        <div className="games__tools">
+          <input
+            type="search"
+            className="games__search"
+            placeholder={t("games.search")}
+            aria-label={t("games.search")}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          {!loading && games.length > 0 && <span className="games__count">{t("games.count", { n: visible.length })}</span>}
+        </div>
 
         {error && <p role="alert">{error}</p>}
-        {loading && <p>Loading games...</p>}
-        {!loading && !error && games.length === 0 && <p>Games have not been added yet.</p>}
+        {loading && <p className="games__note">{t("games.loading")}</p>}
+        {!loading && !error && games.length === 0 && <p className="games__note">{t("games.empty")}</p>}
+        {!loading && games.length > 0 && visible.length === 0 && <p className="games__note">{t("games.noMatch")}</p>}
         <div className="games__grid">
-          {games.map((g) => (
+          {visible.map((g) => (
             <GameCard key={g.id} game={g} />
           ))}
         </div>

@@ -45,3 +45,20 @@ export async function getProfilesOfGame(gameId) {
   });
   return profiles;
 }
+
+export async function getFavoriteProfiles() {
+  const { profiles } = await apiRequest("/profiles/favorites", { auth: true });
+  return profiles;
+}
+
+export async function getProfileHistory() {
+  const { profiles } = await apiRequest("/profiles/history", { auth: true });
+  return profiles;
+}
+
+export async function setProfileFavorite(profileId, favorite) {
+  await apiRequest(`/profiles/favorites/${encodeURIComponent(profileId)}`, {
+    method: favorite ? "PUT" : "DELETE",
+    auth: true,
+  });
+}

@@ -96,7 +96,30 @@ async function syncFields(client, gameId, fields) {
 
 export async function listGames(req, res) {
   const { rows } = await db.query("SELECT id FROM spele ORDER BY nosaukums");
-  res.json({ games: await Promise.all(rows.map(({ id }) => gameWithFields(db, id))) });
+  const { rows: activity } = await db.query(
+    `SELECT g.id,
+            (SELECT COUNT(*) FROM anketa p
+             WHERE p.spele_id = g.id AND p.ir_dzesta = FALSE
+               AND NOT EXISTS (
+                 SELECT 1 FROM lietotaja_bans b
+                 WHERE b.lietotajs_id = p.lietotajs_id AND b.ir_aktivs = 'ir'
+                   AND (b.beigu_datums IS NULL OR b.beigu_datums > CURRENT_TIMESTAMP)
+               ))
+              AS active_players,
+            (SELECT COUNT(*) FROM team_lobby l
+             WHERE l.game_id = g.id AND l.status = 'open') AS open_lobbies
+     FROM spele g`,
+  );
+  const activityByGame = new Map(activity.map((row) => [String(row.id), {
+    activePlayers: Number(row.active_players),
+    openLobbies: Number(row.open_lobbies),
+  }]));
+  res.json({
+    games: await Promise.all(rows.map(async ({ id }) => ({
+      ...(await gameWithFields(db, id)),
+      ...activityByGame.get(String(id)),
+    }))),
+  });
 }
 
 export async function getGame(req, res) {

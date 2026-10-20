@@ -22,7 +22,7 @@ export async function getFeed(gameId) {
   const seen = new Set(read(SEEN_KEY, {})[seenKey(gameId)] || []);
   return profiles
     .filter((profile) => !seen.has(String(profile.id)))
-    .map((profile) => ({ ...profile, profileId: profile.id, demo: false, photo: "" }));
+    .map((profile) => ({ ...profile, profileId: profile.id, demo: false, photo: profile.avatar || "" }));
 }
 
 export async function react(gameId, target, type, reason) {

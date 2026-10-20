@@ -6,6 +6,8 @@ import * as profiles from "../controllers/profileController.js";
 import * as admin from "../controllers/adminController.js";
 import * as chats from "../controllers/chatController.js";
 import * as notifications from "../controllers/notificationController.js";
+import * as lobbies from "../controllers/lobbyController.js";
+import * as lobbyChat from "../controllers/lobbyChatController.js";
 import { requireAdmin, requireAuth } from "../middleware/auth.js";
 
 const router = Router();
@@ -15,6 +17,7 @@ router.get("/health", (req, res) => res.json({ status: "ok" }));
 router.post("/auth/register", auth.register);
 router.post("/auth/login", loginLimiter, auth.login);
 router.get("/auth/me", requireAuth, auth.me);
+router.patch("/auth/me", requireAuth, auth.updateMe);
 
 router.get("/games", games.listGames);
 router.get("/games/:id", games.getGame);
@@ -28,6 +31,19 @@ router.put("/games/:gameId/profiles/me", requireAuth, profiles.saveMyProfile);
 router.delete("/games/:gameId/profiles/me", requireAuth, profiles.deleteMyProfile);
 router.post("/games/:gameId/profiles/:profileId/reactions", requireAuth, profiles.reactToProfile);
 router.post("/games/:gameId/profiles/:profileId/reports", requireAuth, profiles.reportProfile);
+router.get("/profiles/favorites", requireAuth, profiles.listFavorites);
+router.get("/profiles/history", requireAuth, profiles.listProfileHistory);
+router.put("/profiles/favorites/:profileId", requireAuth, profiles.addFavorite);
+router.delete("/profiles/favorites/:profileId", requireAuth, profiles.removeFavorite);
+
+router.get("/games/:gameId/lobbies", requireAuth, lobbies.listLobbies);
+router.get("/lobbies/mine", requireAuth, lobbies.listMyLobbies);
+router.post("/games/:gameId/lobbies", requireAuth, lobbies.createLobby);
+router.post("/games/:gameId/lobbies/:lobbyId/join", requireAuth, lobbies.joinLobby);
+router.delete("/games/:gameId/lobbies/:lobbyId/members/me", requireAuth, lobbies.leaveLobby);
+router.delete("/games/:gameId/lobbies/:lobbyId", requireAuth, lobbies.closeLobby);
+router.get("/lobbies/:lobbyId/messages", requireAuth, lobbyChat.getLobbyMessages);
+router.post("/lobbies/:lobbyId/messages", requireAuth, lobbyChat.sendLobbyMessage);
 
 router.get("/chats", requireAuth, chats.listChats);
 router.get("/chats/:gameId/:userId/messages", requireAuth, chats.getMessages);

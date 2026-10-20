@@ -53,3 +53,19 @@
   grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
   gap: 20px;
 }
+
+.games__tools {
+  max-width: 1400px; margin: 0 auto 28px; display: flex; align-items: center;
+  justify-content: center; gap: 16px; flex-wrap: wrap;
+}
+.games__search {
+  width: min(420px, 100%); padding: 11px 16px; background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 999px; font: 500 1rem "Manrope", sans-serif;
+}
+.games__search:focus { outline: none; border-color: var(--red); box-shadow: 0 0 16px var(--red-glow); }
+.games__count { color: var(--muted); font-size: 0.9rem; }
+.games__note { text-align: center; color: var(--muted); }
+@media (max-width: 520px) {
+  .games__grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .gcard__name { font-size: 1.25rem; }
+}

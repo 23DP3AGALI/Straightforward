@@ -1,0 +1,2 @@
+ALTER TABLE lietotajs
+    ADD COLUMN avatar MEDIUMTEXT NULL;

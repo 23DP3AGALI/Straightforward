@@ -1,7 +1,4 @@
-// Уменьшает выбранную фотографию в браузере и возвращает её как data URL (JPEG).
-// Так фото занимает ~50-100 КБ и помещается в localStorage.
-// Позже, с backend, файл будет загружаться на сервер.
-export function resizeImage(file, maxSide = 640) {
+export function resizeImage(file, maxSide = 320) {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith("image/")) {
       return reject(new Error("Choose an image file."));
@@ -18,9 +15,27 @@ export function resizeImage(file, maxSide = 640) {
       const canvas = document.createElement("canvas");
       canvas.width = Math.round(img.width * scale);
       canvas.height = Math.round(img.height * scale);
-      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      const context = canvas.getContext("2d");
+      if (!context) {
+        URL.revokeObjectURL(url);
+        reject(new Error("Could not process this image."));
+        return;
+      }
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(img, 0, 0, canvas.width, canvas.height);
       URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL("image/jpeg", 0.82));
+      let quality = 0.82;
+      let result = canvas.toDataURL("image/jpeg", quality);
+      while (result.length > 120_000 && quality > 0.42) {
+        quality -= 0.08;
+        result = canvas.toDataURL("image/jpeg", quality);
+      }
+      if (result.length > 120_000) {
+        reject(new Error("This image cannot be reduced enough. Choose a simpler image."));
+        return;
+      }
+      resolve(result);
     };
 
     img.onerror = () => {

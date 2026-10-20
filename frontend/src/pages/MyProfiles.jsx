@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { getCurrentUser } from "../services/auth";
+import { useI18n } from "../i18n/context";
+import { getMyLobbies } from "../services/lobbies";
 import { getGames } from "../services/store";
 import { deleteProfile, getMyProfiles } from "../services/profiles";
 import "./MyProfiles.css";
@@ -13,17 +15,20 @@ function fieldRows(game, profile) {
 }
 
 export default function MyProfiles() {
+  const { t } = useI18n();
   const user = getCurrentUser();
   const [games, setGames] = useState([]);
   const [profiles, setProfiles] = useState([]);
+  const [lobbies, setLobbies] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([getGames(), getMyProfiles()])
-      .then(([loadedGames, loadedProfiles]) => {
+    Promise.all([getGames(), getMyProfiles(), getMyLobbies()])
+      .then(([loadedGames, loadedProfiles, loadedLobbies]) => {
         setGames(loadedGames);
         setProfiles(loadedProfiles);
+        setLobbies(loadedLobbies);
       })
       .catch((requestError) => setError(requestError.message))
       .finally(() => setLoading(false));
@@ -44,6 +49,7 @@ export default function MyProfiles() {
   return (
     <div className="mp">
       <Link to="/app" className="mp__link">Back to games</Link>
+      <Link to="/app/settings" className="mp__settings-link">{t("nav.settings")}</Link>
       <h1 className="mp__title">My profiles</h1>
       <p className="mp__sub">Your profiles for each game. Edit or delete them here.</p>
 
@@ -88,6 +94,26 @@ export default function MyProfiles() {
           })}
         </ul>
       )}
+
+      <section className="mp__groups">
+        <h2>{t("groups.title")}</h2>
+        {loading ? <p>{t("groups.loading")}</p> : lobbies.length === 0 ? (
+          <p className="mp__groups-empty">{t("groups.empty")}</p>
+        ) : (
+          <ul className="mp__list">
+            {lobbies.map((lobby) => (
+              <li key={lobby.id} className="mp__card">
+                <h3 className="mp__game">{lobby.title}</h3>
+                <p className="mp__group-game">{lobby.gameName} · {lobby.playerCount}/{lobby.maxPlayers} {t("groups.players")}</p>
+                {lobby.description && <p className="mp__about">{lobby.description}</p>}
+                <Link to={`/app/${lobby.gameId}/lobbies/${lobby.id}/chat`} className="mp__btn mp__btn--main">
+                  {t("lobby.openChat")}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

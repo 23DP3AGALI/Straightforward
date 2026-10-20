@@ -83,3 +83,26 @@
   color: var(--muted);
   font-size: 0.9rem;
 }
+
+.cards {
+  max-width: 1100px; margin: 0 auto; padding: 72px 20px 24px;
+  border-top: 1px solid var(--line); text-align: center;
+}
+.cards > h2 {
+  margin: 0 0 32px; font-family: "Big Shoulders Display", sans-serif;
+  font-weight: 800; font-size: 2.6rem; color: var(--red);
+}
+.cards__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
+.lcard {
+  position: relative; padding: 28px 22px; text-align: left;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+.lcard:hover { transform: translateY(-4px); border-color: var(--red); box-shadow: 0 10px 30px var(--red-glow); }
+.lcard__icon { font-size: 2rem; }
+.lcard__num {
+  position: absolute; top: 16px; right: 20px; font-family: "Big Shoulders Display", sans-serif;
+  font-weight: 900; font-size: 2.4rem; color: var(--red); opacity: 0.25;
+}
+.lcard h3 { margin: 12px 0 6px; font-size: 1.15rem; }
+.lcard p { margin: 0; color: var(--muted); font-size: 0.95rem; }

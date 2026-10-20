@@ -32,6 +32,8 @@
   font-weight: 800;
   font-size: 0.9rem;
   border-radius: 50%;
+  background-position: center;
+  background-size: cover;
 }
 
 .pm__caret {
@@ -55,7 +57,7 @@
   z-index: 20;
   min-width: 200px;
   padding: 6px;
-  background: #0d0d0d;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);

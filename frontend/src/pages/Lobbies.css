@@ -1,0 +1,34 @@
+.lobbies { max-width: 1100px; min-height: calc(100vh - 70px); margin: 0 auto; padding: 30px 20px 80px; }
+.lobbies__back { color: var(--muted); border-bottom: 1px solid var(--red); }
+.lobbies__heading { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin: 20px 0 28px; }
+.lobbies__heading h1 { margin: 2px 0; font: 900 clamp(2rem, 6vw, 3.5rem) "Big Shoulders Display", sans-serif; }
+.lobbies__heading p { margin: 0; color: var(--muted); }
+.lobbies__eyebrow { color: var(--red) !important; font-size: .8rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.lobbies__count { flex: 0 0 auto; padding: 8px 12px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 20px; }
+.lobbies__error { color: #ff6b73; }
+.lobbies__create { margin-bottom: 38px; padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.lobbies__create h2, .lobbies__section h2 { margin: 0 0 16px; font: 800 1.8rem "Big Shoulders Display", sans-serif; }
+.lobbies__create form { display: grid; gap: 14px; }
+.lobbies__create label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; }
+.lobbies__create input, .lobbies__create textarea { min-width: 0; padding: 9px 11px; color: var(--ink); background: var(--black); border: 1px solid var(--line); border-radius: 5px; font: inherit; }
+.lobbies__create input:focus, .lobbies__create textarea:focus { outline: none; border-color: var(--red); }
+.lobbies__form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.lobbies__create button, .lobbies__actions button { padding: 9px 15px; color: white; background: var(--red); border: 0; border-radius: 5px; font: inherit; font-weight: 700; cursor: pointer; }
+.lobbies__create button { justify-self: start; }
+.lobbies__create button:disabled, .lobbies__actions button:disabled { opacity: .55; cursor: not-allowed; }
+.lobbies__empty { padding: 24px; color: var(--muted); text-align: center; background: var(--surface); border: 1px dashed var(--line); border-radius: 10px; }
+.lobbies__list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin: 0; padding: 0; list-style: none; }
+.lobbies__card { padding: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.lobbies__card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.lobbies__card h3 { margin: 2px 0 0; font: 800 1.5rem "Big Shoulders Display", sans-serif; }
+.lobbies__owner { margin: 0; color: var(--muted); font-size: .8rem; }
+.lobbies__seats { flex: 0 0 auto; padding: 5px 9px; color: #36d783; border: 1px solid currentColor; border-radius: 20px; font-size: .8rem; font-weight: 700; }
+.lobbies__seats--full { color: var(--muted); }
+.lobbies__description { color: var(--muted); }
+.lobbies__details { display: flex; flex-wrap: wrap; gap: 7px; margin: 14px 0; }
+.lobbies__details span { padding: 5px 8px; background: var(--red-glow); border: 1px solid var(--line); border-radius: 18px; font-size: .8rem; }
+.lobbies__actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
+.lobbies__actions .lobbies__chat { padding: 9px 15px; color: #fff; background: #2b9d63; border-radius: 5px; font-weight: 700; }
+.lobbies__actions .lobbies__chat:hover { background: #248653; }
+.lobbies__actions .lobbies__leave, .lobbies__actions .lobbies__close { color: var(--ink); background: transparent; border: 1px solid var(--line); }
+@media (max-width: 560px) { .lobbies__heading { align-items: flex-start; flex-direction: column; } }

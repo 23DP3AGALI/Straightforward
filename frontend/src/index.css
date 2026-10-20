@@ -8,6 +8,28 @@
   --red-deep: #7a0d14;
   --red-glow: rgba(229, 32, 43, 0.35);
   --line: rgba(229, 32, 43, 0.28);
+  --surface: #0d0d0d;
+  --surface-2: #1a1a1a;
+  --nav-bg: rgba(0, 0, 0, 0.82);
+  --nav-solid: #0a0a0a;
+  --shadow: rgba(0, 0, 0, 0.6);
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --black: #faf5f5;
+  --ink: #1d1214;
+  --muted: #6e5d5f;
+  --red: #d01a26;
+  --red-deep: #f4cfd2;
+  --red-glow: rgba(208, 26, 38, 0.2);
+  --line: rgba(208, 26, 38, 0.28);
+  --surface: #ffffff;
+  --surface-2: #f1e7e8;
+  --nav-bg: rgba(250, 245, 245, 0.85);
+  --nav-solid: #faf5f5;
+  --shadow: rgba(60, 20, 24, 0.18);
+  color-scheme: light;
 }
 
 *,
@@ -28,6 +50,7 @@ body {
   font-family: "Manrope", system-ui, sans-serif;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  transition: background 0.25s, color 0.25s;
 }
 
 a {

@@ -3,9 +3,11 @@ import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { getCurrentUser } from "../services/auth";
 import { getGame } from "../services/store";
 import { getProfile, saveProfile } from "../services/profiles";
+import { useI18n } from "../i18n/context";
 import "./CreateProfile.css";
 
 export default function CreateProfile({ edit = false }) {
+  const { t } = useI18n();
   const { gameId } = useParams();
   const navigate = useNavigate();
   const [game, setGame] = useState(null);
@@ -60,7 +62,10 @@ export default function CreateProfile({ edit = false }) {
     );
   }
 
-  const setValue = (fid, v) => setValues((prev) => ({ ...prev, [fid]: v }));
+  const setValue = (fid, value) => {
+    if (String(value).length > 200) return;
+    setValues((previous) => ({ ...previous, [fid]: value }));
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -82,27 +87,28 @@ export default function CreateProfile({ edit = false }) {
         {edit ? "Back to my profiles" : "Back to games"}
       </Link>
       <h1 className="cp__title">{game.name}</h1>
-      <p className="cp__sub">{edit ? "Edit your profile for this game." : "Create your profile for this game."}</p>
+      <p className="cp__sub">{edit ? t("profile.editIntro") : t("profile.createIntro")}</p>
 
       <form className="cp__form" onSubmit={submit}>
         <label>
-          About you
+          {t("profile.about")}
           <textarea
             rows={4}
             maxLength={600}
             value={about}
             onChange={(e) => setAbout(e.target.value)}
-            placeholder="How do you play, when, and who are you looking for?"
+            placeholder={t("profile.aboutPlaceholder")}
           />
+          <span className="cp__counter">{about.length}/600</span>
         </label>
 
         {game.fields.map((f) => (
           <label key={f.id}>
-            {f.name || "Unnamed field"}
+            {f.name || t("profile.unnamedField")}
             {f.required ? " *" : ""}
             {f.type === "select" ? (
               <select value={values[f.id] ?? ""} onChange={(e) => setValue(f.id, e.target.value)}>
-                <option value="">Choose...</option>
+                <option value="">{t("profile.choose")}</option>
                 {f.options.map((o) => (
                   <option key={o} value={o}>{o}</option>
                 ))}
@@ -110,15 +116,19 @@ export default function CreateProfile({ edit = false }) {
             ) : (
               <input
                 type={f.type === "number" ? "number" : "text"}
+                maxLength={f.type === "number" ? undefined : 200}
                 value={values[f.id] ?? ""}
                 onChange={(e) => setValue(f.id, e.target.value)}
               />
+            )}
+            {f.type !== "select" && (
+              <span className="cp__counter">{String(values[f.id] ?? "").length}/200</span>
             )}
           </label>
         ))}
 
         {error && <p className="cp__error" role="alert">{error}</p>}
-        <button type="submit" className="cp__submit">Save profile</button>
+        <button type="submit" className="cp__submit">{t("profile.save")}</button>
       </form>
     </div>
   );

@@ -15,29 +15,34 @@ async function formatProfile(queryable, row) {
     gameId: row.spele_id,
     about: row.apraksts,
     nick: row.nick,
+    avatar: row.avatar || "",
     updatedAt: row.updated_at,
+    isFavorite: Boolean(row.is_favorite),
+    historyAction: row.history_action || null,
     values: await profileValues(queryable, row.id),
   };
 }
 
 export async function listGameProfiles(req, res) {
   const { rows } = await db.query(
-    `SELECT p.id, p.lietotajs_id, p.spele_id, p.apraksts, p.updated_at, u.nick
+    `SELECT p.id, p.lietotajs_id, p.spele_id, p.apraksts, p.updated_at, u.nick, u.avatar,
+            (f.profile_id IS NOT NULL) AS is_favorite
      FROM anketa p JOIN lietotajs u ON u.id = p.lietotajs_id
+     LEFT JOIN profile_favorite f ON f.profile_id = p.id AND f.user_id = ?
      WHERE p.spele_id = ? AND p.ir_dzesta = FALSE AND p.lietotajs_id <> ?
        AND NOT EXISTS (SELECT 1 FROM lietotaja_bans b WHERE b.lietotajs_id = u.id
          AND b.ir_aktivs = 'ir' AND (b.beigu_datums IS NULL OR b.beigu_datums > CURRENT_TIMESTAMP))
      ORDER BY p.updated_at DESC`,
-    [Number(req.params.gameId), req.user.id],
+    [req.user.id, Number(req.params.gameId), req.user.id],
   );
   res.json({ profiles: await Promise.all(rows.map((row) => formatProfile(db, row))) });
 }
 
 export async function getMyProfile(req, res) {
   const { rows } = await db.query(
-    `SELECT id, lietotajs_id, spele_id, apraksts, updated_at, ? AS nick
+    `SELECT id, lietotajs_id, spele_id, apraksts, updated_at, ? AS nick, ? AS avatar
      FROM anketa WHERE lietotajs_id = ? AND spele_id = ? AND ir_dzesta = FALSE`,
-    [req.user.nick, req.user.id, Number(req.params.gameId)],
+    [req.user.nick, req.user.avatar || "", req.user.id, Number(req.params.gameId)],
   );
   if (!rows[0]) return res.json({ profile: null });
   res.json({ profile: await formatProfile(db, rows[0]) });
@@ -52,7 +57,6 @@ export async function saveMyProfile(req, res) {
   if (!values || Array.isArray(values) || typeof values !== "object") {
     return res.status(400).json({ error: "Profile values must be an object." });
   }
-
   const profile = await withTransaction(async (client) => {
     const game = await client.query("SELECT id FROM spele WHERE id = ?", [gameId]);
     if (!game.rows[0]) return null;
@@ -66,7 +70,9 @@ export async function saveMyProfile(req, res) {
       if (!["string", "number", "boolean"].includes(typeof value)) {
         throw Object.assign(new Error("Profile field values must be text, numbers, or booleans."), { status: 400 });
       }
-      if (String(value).length > 200) throw Object.assign(new Error("Profile field values must be at most 200 characters."), { status: 400 });
+      if (String(value).length > 200) {
+        throw Object.assign(new Error("Profile field values must be at most 200 characters."), { status: 400 });
+      }
     }
     for (const field of fieldResult.rows) {
       if (field.ir_obligats && !String(values[field.id] ?? "").trim()) {
@@ -89,8 +95,9 @@ export async function saveMyProfile(req, res) {
       );
     }
     const { rows } = await client.query(
-      "SELECT id, lietotajs_id, spele_id, apraksts, updated_at, ? AS nick FROM anketa WHERE id = ?",
-      [req.user.nick, profileId],
+      `SELECT id, lietotajs_id, spele_id, apraksts, updated_at, ? AS nick, ? AS avatar
+       FROM anketa WHERE id = ?`,
+      [req.user.nick, req.user.avatar || "", profileId],
     );
     const row = rows[0];
     return formatProfile(client, row);
@@ -127,6 +134,11 @@ export async function reactToProfile(req, res) {
       `INSERT INTO reakcija (tips, lietotajs_id, anketa_id) VALUES (?, ?, ?)
        ON DUPLICATE KEY UPDATE tips = VALUES(tips), datums = CURRENT_TIMESTAMP`,
       [type === "like" ? "patik" : "nepatik", req.user.id, target.id],
+    );
+    await client.query(
+      `INSERT INTO profile_history (user_id, profile_id, action) VALUES (?, ?, ?)
+       ON DUPLICATE KEY UPDATE action = VALUES(action), created_at = CURRENT_TIMESTAMP`,
+      [req.user.id, target.id, type],
     );
 
     let match = false;
@@ -181,5 +193,74 @@ export async function reportProfile(req, res) {
      ON DUPLICATE KEY UPDATE pamatojums = VALUES(pamatojums), datums = CURRENT_TIMESTAMP, admin_id = NULL`,
     [reason.trim(), rows[0].id, req.user.id],
   );
+  await db.query(
+    `INSERT INTO profile_history (user_id, profile_id, action) VALUES (?, ?, 'report')
+     ON DUPLICATE KEY UPDATE action = 'report', created_at = CURRENT_TIMESTAMP`,
+    [req.user.id, rows[0].id],
+  );
   res.status(201).json({ message: "Report submitted." });
+}
+
+export async function listFavorites(req, res) {
+  const { rows } = await db.query(
+    `SELECT p.id, p.lietotajs_id, p.spele_id, p.apraksts, p.updated_at, u.nick, u.avatar,
+            TRUE AS is_favorite,
+            g.nosaukums AS game_name, f.created_at AS saved_at
+     FROM profile_favorite f
+     JOIN anketa p ON p.id = f.profile_id AND p.ir_dzesta = FALSE
+     JOIN lietotajs u ON u.id = p.lietotajs_id
+     JOIN spele g ON g.id = p.spele_id
+     WHERE f.user_id = ?
+     ORDER BY f.created_at DESC`,
+    [req.user.id],
+  );
+  res.json({ profiles: await Promise.all(rows.map(async (row) => ({
+    ...(await formatProfile(db, row)),
+    gameName: row.game_name,
+    savedAt: row.saved_at,
+  }))) });
+}
+
+export async function listProfileHistory(req, res) {
+  const { rows } = await db.query(
+    `SELECT p.id, p.lietotajs_id, p.spele_id, p.apraksts, p.updated_at, u.nick, u.avatar,
+            (f.profile_id IS NOT NULL) AS is_favorite, h.action AS history_action,
+            g.nosaukums AS game_name, h.created_at AS viewed_at
+     FROM profile_history h
+     JOIN anketa p ON p.id = h.profile_id AND p.ir_dzesta = FALSE
+     JOIN lietotajs u ON u.id = p.lietotajs_id
+     JOIN spele g ON g.id = p.spele_id
+     LEFT JOIN profile_favorite f ON f.profile_id = p.id AND f.user_id = h.user_id
+     WHERE h.user_id = ?
+     ORDER BY h.created_at DESC
+     LIMIT 100`,
+    [req.user.id],
+  );
+  res.json({ profiles: await Promise.all(rows.map(async (row) => ({
+    ...(await formatProfile(db, row)),
+    gameName: row.game_name,
+    viewedAt: row.viewed_at,
+  }))) });
+}
+
+export async function addFavorite(req, res) {
+  const profileId = Number(req.params.profileId);
+  const { rows } = await db.query(
+    "SELECT id FROM anketa WHERE id = ? AND ir_dzesta = FALSE AND lietotajs_id <> ?",
+    [profileId, req.user.id],
+  );
+  if (!rows[0]) return res.status(404).json({ error: "Profile not found." });
+  await db.query(
+    "INSERT IGNORE INTO profile_favorite (user_id, profile_id) VALUES (?, ?)",
+    [req.user.id, profileId],
+  );
+  res.status(204).end();
+}
+
+export async function removeFavorite(req, res) {
+  await db.query(
+    "DELETE FROM profile_favorite WHERE user_id = ? AND profile_id = ?",
+    [req.user.id, Number(req.params.profileId)],
+  );
+  res.status(204).end();
 }
