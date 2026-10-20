@@ -15,42 +15,61 @@ async function findMatch(queryable, gameId, userId, otherUserId) {
      LIMIT 1`,
     [otherUserId, userId, gameId],
   );
-  return rows[0] || null;
+  if (rows[0]) return rows[0];
+
+  const history = await queryable.query(
+    `SELECT id FROM chat_message
+     WHERE game_id = ? AND (
+       (sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?)
+     )
+     LIMIT 1`,
+    [gameId, userId, otherUserId, otherUserId, userId],
+  );
+  return history.rows[0] || null;
 }
 
 export async function listChats(req, res) {
   const { rows } = await db.query(
-    `SELECT g.id AS gameId, g.nosaukums AS gameName,
+    `SELECT chat_pair.gameId, g.nosaukums AS gameName,
             other.id AS userId, other.nick, other.kontakt_informacija AS contact,
             (SELECT m.message_text FROM chat_message m
-             WHERE m.game_id = g.id
+             WHERE m.game_id = chat_pair.gameId
                AND ((m.sender_id = req_user.id AND m.recipient_id = other.id)
                  OR (m.sender_id = other.id AND m.recipient_id = req_user.id))
              ORDER BY m.id DESC LIMIT 1) AS lastMessage,
             (SELECT m.created_at FROM chat_message m
-             WHERE m.game_id = g.id
+             WHERE m.game_id = chat_pair.gameId
                AND ((m.sender_id = req_user.id AND m.recipient_id = other.id)
                  OR (m.sender_id = other.id AND m.recipient_id = req_user.id))
              ORDER BY m.id DESC LIMIT 1) AS lastMessageAt,
             (SELECT COUNT(*) FROM chat_message m
-             WHERE m.game_id = g.id AND m.sender_id = other.id
+             WHERE m.game_id = chat_pair.gameId AND m.sender_id = other.id
                AND m.recipient_id = req_user.id
                AND NOT EXISTS (
                  SELECT 1 FROM notification n
                  WHERE n.message_id = m.id AND n.recipient_id = req_user.id AND n.is_read = TRUE
                )) AS unread
-     FROM lietotajs req_user
-     JOIN anketa mine ON mine.lietotajs_id = req_user.id AND mine.ir_dzesta = FALSE
-     JOIN anketa theirs ON theirs.spele_id = mine.spele_id AND theirs.ir_dzesta = FALSE
-     JOIN reakcija my_like ON my_like.anketa_id = theirs.id
-       AND my_like.lietotajs_id = req_user.id AND my_like.tips = 'patik'
-     JOIN reakcija their_like ON their_like.anketa_id = mine.id
-       AND their_like.lietotajs_id = theirs.lietotajs_id AND their_like.tips = 'patik'
-     JOIN lietotajs other ON other.id = theirs.lietotajs_id
-     JOIN spele g ON g.id = mine.spele_id
-     WHERE req_user.id = ?
-     ORDER BY lastMessageAt DESC, g.id DESC`,
-    [req.user.id],
+     FROM (
+       SELECT mine.spele_id AS gameId, mine.lietotajs_id AS ownerId,
+              theirs.lietotajs_id AS otherId
+       FROM anketa mine
+       JOIN anketa theirs ON theirs.spele_id = mine.spele_id
+         AND theirs.lietotajs_id <> mine.lietotajs_id AND theirs.ir_dzesta = FALSE
+       JOIN reakcija my_like ON my_like.anketa_id = theirs.id
+         AND my_like.lietotajs_id = mine.lietotajs_id AND my_like.tips = 'patik'
+       JOIN reakcija their_like ON their_like.anketa_id = mine.id
+         AND their_like.lietotajs_id = theirs.lietotajs_id AND their_like.tips = 'patik'
+       WHERE mine.lietotajs_id = ? AND mine.ir_dzesta = FALSE
+       UNION
+       SELECT m.game_id, ?, CASE WHEN m.sender_id = ? THEN m.recipient_id ELSE m.sender_id END
+       FROM chat_message m
+       WHERE m.sender_id = ? OR m.recipient_id = ?
+     ) chat_pair
+     JOIN lietotajs req_user ON req_user.id = chat_pair.ownerId
+     JOIN lietotajs other ON other.id = chat_pair.otherId
+     JOIN spele g ON g.id = chat_pair.gameId
+     ORDER BY lastMessageAt DESC, chat_pair.gameId DESC`,
+    [req.user.id, req.user.id, req.user.id, req.user.id, req.user.id],
   );
   res.json({
     chats: rows.map((chat) => ({

@@ -1,3 +1,3 @@
 git add .
-git commit -m "notesteju un izlaboju stradašanu procesu"
+git commit -m "fix chat bug"
 git push origin main
