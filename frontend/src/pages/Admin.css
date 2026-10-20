@@ -10,6 +10,15 @@
 .admin__logout:hover { background: #bd1720; border-color: #bd1720; transform: translateY(-1px); }
 .admin__logout:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
 .admin__body { display: grid; grid-template-columns: 280px 1fr; gap: 32px; margin-top: 24px; }
+.admin__admins { margin-top: 20px; padding: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.admin__admins h2 { margin: 0 0 6px; }
+.admin__admins p { margin: 0 0 12px; }
+.admin__admin-form { display: flex; flex-wrap: wrap; gap: 8px; }
+.admin__admin-form input { flex: 1 1 220px; }
+.admin__admin-form button { padding: 8px 12px; color: #fff; background: var(--red); border: 0; border-radius: 4px; font-weight: 700; }
+.admin__admin-form button:last-child { color: var(--ink); background: transparent; border: 1px solid var(--line); }
+.admin__admin-form button:disabled { opacity: .6; cursor: wait; }
+.admin__notice { color: #2ecc71; }
 .admin h2 { margin: 0 0 12px; font-size: 1.1rem; }
 .admin input, .admin select {
   padding: 8px 10px; background: var(--surface); color: var(--ink);

@@ -82,6 +82,10 @@ export const dictionaries = {
     "settings.passwordTitle": "Change password", "settings.currentPassword": "Current password", "settings.newPassword": "New password",
     "settings.passwordHint": "Your current password is needed when changing your email, nickname, or password.",
     "settings.save": "Save changes", "settings.saving": "Saving...", "settings.saved": "Your settings were saved.",
+    "chat.back": "Back to games", "chat.title": "Chats", "chat.intro": "Your direct and group conversations.",
+    "chat.empty": "No chats yet. Join a group or match with another player to start chatting.",
+    "chat.group": "Group chat", "chat.groupEmpty": "Start the group conversation.", "chat.directEmpty": "Say hello!",
+    "chat.disconnecting": "Disconnecting...",
   },
   lv: {
     "nav.welcome": "Sākums", "nav.about": "Par mums", "nav.support": "Atbalsts", "nav.contact": "Kontakti",
@@ -160,6 +164,10 @@ export const dictionaries = {
     "settings.passwordTitle": "Mainīt paroli", "settings.currentPassword": "Pašreizējā parole", "settings.newPassword": "Jaunā parole",
     "settings.passwordHint": "Pašreizējā parole nepieciešama, mainot e-pastu, segvārdu vai paroli.",
     "settings.save": "Saglabāt izmaiņas", "settings.saving": "Saglabā...", "settings.saved": "Iestatījumi saglabāti.",
+    "chat.back": "Atpakaļ pie spēlēm", "chat.title": "Tērzēšanas", "chat.intro": "Tavas privātās un grupu sarunas.",
+    "chat.empty": "Vēl nav tērzēšanu. Pievienojies grupai vai izveido sakritību ar spēlētāju.",
+    "chat.group": "Grupas tērzēšana", "chat.groupEmpty": "Sāc grupas sarunu.", "chat.directEmpty": "Pasveicini!",
+    "chat.disconnecting": "Atvienojas...",
   },
   ru: {
     "nav.welcome": "Главная", "nav.about": "О проекте", "nav.support": "Поддержка", "nav.contact": "Контакты",
@@ -238,5 +246,9 @@ export const dictionaries = {
     "settings.passwordTitle": "Сменить пароль", "settings.currentPassword": "Текущий пароль", "settings.newPassword": "Новый пароль",
     "settings.passwordHint": "Текущий пароль нужен для смены почты, никнейма или пароля.",
     "settings.save": "Сохранить изменения", "settings.saving": "Сохранение...", "settings.saved": "Настройки сохранены.",
+    "chat.back": "Назад к играм", "chat.title": "Чаты", "chat.intro": "Личные и групповые переписки.",
+    "chat.empty": "Чатов пока нет. Вступите в группу или найдите взаимную симпатию с игроком.",
+    "chat.group": "Групповой чат", "chat.groupEmpty": "Начните общение в группе.", "chat.directEmpty": "Напишите привет!",
+    "chat.disconnecting": "Отключение...",
   },
 };

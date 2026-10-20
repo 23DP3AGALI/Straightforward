@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { apiRequest } from "../services/api";
 import { logout } from "../services/auth";
 import { createGame, deleteGame, getGames, saveGame } from "../services/store";
 import "./Admin.css";
@@ -20,9 +21,39 @@ export default function Admin() {
   const [selectedId, setSelectedId] = useState(null);
   const [newName, setNewName] = useState("");
   const [error, setError] = useState("");
+  const [adminNotice, setAdminNotice] = useState("");
+  const [adminNick, setAdminNick] = useState("");
+  const [adminAction, setAdminAction] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const selected = games.find((game) => String(game.id) === String(selectedId));
+
+  const changeAdminAccess = async (event, grant) => {
+    event.preventDefault();
+    const nick = adminNick.trim();
+    if (!nick) return;
+    setError("");
+    setAdminNotice("");
+    setAdminAction(true);
+    try {
+      const result = await apiRequest(
+        grant ? "/admin/admins" : `/admin/admins/${encodeURIComponent(nick)}`,
+        {
+          method: grant ? "POST" : "DELETE",
+          auth: true,
+          ...(grant ? { body: { nick } } : {}),
+        },
+      );
+      setAdminNotice(grant
+        ? (result.alreadyAdmin ? `${result.user.nick} is already an administrator.` : `Administrator access granted to ${result.user.nick}.`)
+        : `Administrator access removed from ${result.user.nick}.`);
+      setAdminNick("");
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setAdminAction(false);
+    }
+  };
 
   useEffect(() => {
     getGames()
@@ -125,6 +156,30 @@ export default function Admin() {
       </header>
 
       {error && <p role="alert">{error}</p>}
+      <section className="admin__admins" aria-labelledby="admin-access-heading">
+        <h2 id="admin-access-heading">Administrator access</h2>
+        <p className="admin__hint">Enter a user's nickname to grant or remove administrator access.</p>
+        <form className="admin__admin-form" onSubmit={(event) => changeAdminAccess(event, true)}>
+          <input
+            value={adminNick}
+            onChange={(event) => {
+              setAdminNick(event.target.value);
+              setAdminNotice("");
+            }}
+            placeholder="User nickname"
+            minLength={2}
+            maxLength={50}
+            pattern="[A-Za-z0-9_]{2,50}"
+            title="Use 2 to 50 English letters, numbers, or underscores."
+            required
+          />
+          <button type="submit" disabled={adminAction}>Make admin</button>
+          <button type="button" disabled={adminAction || !adminNick.trim()} onClick={(event) => changeAdminAccess(event, false)}>
+            Remove admin
+          </button>
+        </form>
+        {adminNotice && <p className="admin__notice" role="status">{adminNotice}</p>}
+      </section>
       {loading ? <p>Loading games...</p> : (
         <div className="admin__body">
           <aside className="admin__list">

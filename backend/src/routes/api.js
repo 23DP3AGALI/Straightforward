@@ -57,5 +57,7 @@ router.get("/admin/reports", requireAuth, requireAdmin, admin.listReports);
 router.post("/admin/reports/:reportId/review", requireAuth, requireAdmin, admin.reviewReport);
 router.post("/admin/users/:userId/bans", requireAuth, requireAdmin, admin.banUser);
 router.delete("/admin/users/:userId/bans/:banId", requireAuth, requireAdmin, admin.liftBan);
+router.post("/admin/admins", requireAuth, requireAdmin, admin.grantAdmin);
+router.delete("/admin/admins/:nick", requireAuth, requireAdmin, admin.revokeAdmin);
 
 export default router;

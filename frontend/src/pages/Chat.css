@@ -3,13 +3,24 @@
 .ch__title { margin: 24px 0 4px; font-family: "Big Shoulders Display", sans-serif; font-weight: 900; font-size: 3rem; }
 .ch__sub, .ch__empty { color: var(--muted); }
 .ch__list { list-style: none; margin: 20px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.ch__row { display: flex; align-items: center; gap: 10px; padding: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.ch__row .ch__item { flex: 1; min-width: 0; padding: 4px; background: transparent; border: 0; }
+.ch__row .ch__item:hover { border-color: transparent; }
 .ch__item { display: flex; align-items: center; gap: 14px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; transition: border-color 0.2s; }
 .ch__item:hover { border-color: var(--red); }
 .ch__avatar { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 46px; font: 900 1.4rem "Big Shoulders Display", sans-serif; background: var(--red-deep); border: 2px solid var(--red); border-radius: 50%; }
+.ch__avatar--group { color: var(--ink); background: var(--surface-2); border-color: var(--line); }
 .ch__info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .ch__game { font-size: 0.8rem; color: var(--muted); }
 .ch__preview { margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
 .ch__badge { min-width: 22px; padding: 0 7px; background: var(--red); color: #fff; font-size: 0.8rem; font-weight: 700; line-height: 22px; text-align: center; border-radius: 11px; }
+.ch__disconnect { flex: none; padding: 8px 10px; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 6px; font: 700 .82rem "Manrope", sans-serif; cursor: pointer; }
+.ch__disconnect:hover:not(:disabled) { color: var(--ink); border-color: var(--red); background: rgba(229, 32, 43, .12); }
+.ch__disconnect:disabled { opacity: .6; cursor: wait; }
+@media (max-width: 520px) {
+  .ch__row { align-items: stretch; flex-direction: column; }
+  .ch__disconnect { align-self: flex-end; }
+}
 
 .cv { max-width: 700px; height: 100vh; margin: 0 auto; display: flex; flex-direction: column; }
 .cv__top { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 16px; padding: 16px 20px; border-bottom: 1px solid var(--line); }

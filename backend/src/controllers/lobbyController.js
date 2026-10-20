@@ -5,7 +5,9 @@ export async function listMyLobbies(req, res) {
     `SELECT l.id, l.game_id AS gameId, g.nosaukums AS gameName, l.owner_id AS ownerId,
             u.nick AS ownerNick, l.title, l.description, l.starts_at AS startsAt,
             l.max_players AS maxPlayers,
-            (SELECT COUNT(*) FROM team_lobby_member all_members WHERE all_members.lobby_id = l.id) AS playerCount
+            (SELECT COUNT(*) FROM team_lobby_member all_members WHERE all_members.lobby_id = l.id) AS playerCount,
+            (SELECT message_text FROM team_lobby_message m WHERE m.lobby_id = l.id ORDER BY m.id DESC LIMIT 1) AS lastMessage,
+            (SELECT created_at FROM team_lobby_message m WHERE m.lobby_id = l.id ORDER BY m.id DESC LIMIT 1) AS lastMessageAt
      FROM team_lobby_member membership
      JOIN team_lobby l ON l.id = membership.lobby_id AND l.status = 'open'
      JOIN spele g ON g.id = l.game_id

@@ -74,3 +74,50 @@ export async function liftBan(req, res) {
   if (!lifted) return res.status(404).json({ error: "Active ban not found." });
   res.json({ lifted: true });
 }
+
+export async function grantAdmin(req, res) {
+  const nick = req.body?.nick;
+  if (typeof nick !== "string" || !/^[A-Za-z0-9_]{2,50}$/.test(nick.trim())) {
+    return res.status(400).json({ error: "Enter a valid nickname." });
+  }
+
+  const result = await withTransaction(async (client) => {
+    const { rows } = await client.query(
+      "SELECT id, nick FROM lietotajs WHERE LOWER(nick) = LOWER(?) FOR UPDATE",
+      [nick.trim()],
+    );
+    const target = rows[0];
+    if (!target) return { status: "missing" };
+    const existing = await client.query("SELECT id FROM admin WHERE id = ?", [target.id]);
+    if (existing.rows[0]) return { status: "already-admin", user: target };
+    await client.query("INSERT INTO admin (id, vards) VALUES (?, ?)", [target.id, target.nick]);
+    return { status: "granted", user: target };
+  });
+
+  if (result.status === "missing") return res.status(404).json({ error: "User with this nickname was not found." });
+  res.status(result.status === "granted" ? 201 : 200).json({
+    user: { ...result.user, isAdmin: true },
+    alreadyAdmin: result.status === "already-admin",
+  });
+}
+
+export async function revokeAdmin(req, res) {
+  const nick = req.params.nick;
+  if (typeof nick !== "string" || !/^[A-Za-z0-9_]{2,50}$/.test(nick)) {
+    return res.status(400).json({ error: "Enter a valid nickname." });
+  }
+
+  const { rows } = await db.query(
+    "SELECT id, nick FROM lietotajs WHERE LOWER(nick) = LOWER(?)",
+    [nick],
+  );
+  const target = rows[0];
+  if (!target) return res.status(404).json({ error: "User with this nickname was not found." });
+  if (String(target.id) === String(req.user.id)) {
+    return res.status(400).json({ error: "You cannot remove your own administrator access." });
+  }
+
+  const result = await db.query("DELETE FROM admin WHERE id = ?", [target.id]);
+  if (!result.rowCount) return res.status(404).json({ error: "This user is not an administrator." });
+  res.json({ user: { id: target.id, nick: target.nick, isAdmin: false } });
+}
