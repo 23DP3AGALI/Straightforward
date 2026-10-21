@@ -1,5 +1,0 @@
-ALTER TABLE spele
-    ADD COLUMN is_multiplayer BOOLEAN NOT NULL DEFAULT TRUE AFTER category;
-
-ALTER TABLE lietotajs
-    ADD COLUMN is_demo BOOLEAN NOT NULL DEFAULT FALSE AFTER avatar;
