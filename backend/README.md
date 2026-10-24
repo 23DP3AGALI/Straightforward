@@ -160,6 +160,21 @@ Backend uses Node.js, Express, and MySQL 8+ (or a compatible MariaDB release).
    Open `http://localhost:5173`. Vite forwards `/api` requests to the backend.
    Sign in with the administrator credentials from `.env`, open `/admin`, and add games before users create profiles.
 
+## Production deployment
+
+- Set `FRONTEND_ORIGIN` on Render to the comma-separated frontend origins that
+  should be allowed, for example:
+  `https://straightforward-3ht2-v6zpx-dp3fomes-projects.vercel.app`.
+- Set `VITE_API_URL` in the Vercel project to
+  `https://straightforward-d98r.onrender.com/api`. API paths such as `/games`
+  are appended by the shared frontend API client; do not include a resource
+  path such as `/games` in `VITE_API_URL`. Redeploy Vercel after changing this
+  build-time variable.
+- The Vercel rewrite in `frontend/vercel.json` forwards `/api/*` to Render as
+  a fallback when `VITE_API_URL` is not set during the frontend build.
+- The Vite proxy to `http://localhost:3000` is used only by the development
+  server.
+
 ## Routes
 
 - `POST /api/auth/register`, `POST /api/auth/verify-registration`, `POST /api/auth/resend-registration-code`, `POST /api/auth/login`, `GET /api/auth/me`, and `PATCH /api/auth/me` for account settings

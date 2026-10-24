@@ -1,3 +1,3 @@
 git add .
-git commit -m "fix chat bug"
+git commit -m "nomainiju codu prieks hostingu"
 git push origin main

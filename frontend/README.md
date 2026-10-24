@@ -1,16 +1,18 @@
-# React + Vite
+# Straightforward frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## API configuration
 
-Currently, two official plugins are available:
+The frontend uses a shared API client in `src/services/api.js`. Set
+`VITE_API_URL` in the Vercel project to the API base URL, including `/api`,
+then redeploy so Vite includes the variable in the production build:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```text
+https://straightforward-d98r.onrender.com/api
+```
 
-## React Compiler
+Do not add a route such as `/games` to `VITE_API_URL`; services append routes
+such as `/games` themselves. If the variable is missing, requests use `/api`,
+which `vercel.json` rewrites to the Render backend.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+For local development, run `npm run dev`. Vite proxies `/api` to
+`http://localhost:3000`. Run `npm run build` to create the production build.

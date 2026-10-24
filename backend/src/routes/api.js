@@ -12,7 +12,13 @@ import { requireAdmin, requireAuth } from "../middleware/auth.js";
 
 const router = Router();
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: "draft-7", legacyHeaders: false });
-const registrationLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 5, standardHeaders: "draft-7", legacyHeaders: false });
+const registrationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Too many registration attempts. Please wait 15 minutes before trying again." },
+});
 const verificationLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: "draft-7", legacyHeaders: false });
 
 router.get("/health", (req, res) => res.json({ status: "ok" }));
