@@ -1,6 +1,13 @@
 import mysql from "mysql2/promise";
 
-const pool = mysql.createPool(process.env.DATABASE_URL);
+const databaseUrl = process.env.DATABASE_URL;
+const databaseHost = databaseUrl ? new URL(databaseUrl).hostname : "";
+const isLocalDatabase = databaseHost === "localhost" || databaseHost === "127.0.0.1";
+const pool = mysql.createPool({
+  uri: databaseUrl,
+  ...(isLocalDatabase ? {} : { ssl: { rejectUnauthorized: false } }),
+  connectTimeout: 20000,
+});
 
 function createQueryable(connection) {
   return {

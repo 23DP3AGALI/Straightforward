@@ -13,13 +13,20 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
 
 const app = express();
 app.use(helmet());
-const frontendOrigins = (
-  process.env.FRONTEND_ORIGIN || "https://straightforward-3ht2-v6zpx-dp3fomes-projects.vercel.app"
-)
+const frontendOrigins = (process.env.FRONTEND_ORIGIN || "http://localhost:5173")
   .split(",")
-  .map((origin) => origin.trim())
+  .map((origin) => origin.trim().replace(/\/+$/, ""))
   .filter(Boolean);
-app.use(cors({ origin: frontendOrigins, credentials: true }));
+const vercelPreviewOrigin = /^https:\/\/straightforward[a-z0-9-]*-dp3pfomes-projects\.vercel\.app$/;
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || frontendOrigins.includes(origin) || vercelPreviewOrigin.test(origin)) {
+      return callback(null, true);
+    }
+    return callback(null, false);
+  },
+  credentials: true,
+}));
 app.use(express.json({ limit: "1mb" }));
 app.use("/api", apiRouter);
 app.use((req, res) => res.status(404).json({ error: "Route not found." }));
