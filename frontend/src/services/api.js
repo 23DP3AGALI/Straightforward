@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL || "/api";
+const API_URL = import.meta.env.VITE_API_URL || "/api";
 const TOKEN_KEY = "sf_api_token";
 
 export async function apiRequest(path, { method = "GET", body, auth = false } = {}) {
@@ -12,7 +12,8 @@ export async function apiRequest(path, { method = "GET", body, auth = false } = 
 
   let response;
   try {
-    response = await fetch(`${API_BASE}${path}`, {
+    const url = `${API_URL.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`;
+    response = await fetch(url, {
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -25,7 +26,7 @@ export async function apiRequest(path, { method = "GET", body, auth = false } = 
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const error = new Error(payload.error || `API request failed (${response.status}).`);
+    const error = new Error(payload.error || payload.message || `API request failed (${response.status}).`);
     error.status = response.status;
     throw error;
   }
