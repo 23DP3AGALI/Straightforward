@@ -1,8 +1,6 @@
 import bcrypt from "bcryptjs";
-import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
 import jwt from "jsonwebtoken";
 import { db, withTransaction } from "../config/db.js";
-import { sendVerificationCode } from "../services/email.js";
 
 function createToken(user) {
   return jwt.sign({ sub: user.id }, process.env.JWT_SECRET, { expiresIn: "12h" });
@@ -19,25 +17,6 @@ function publicUser(user) {
     ir_banots: user.ir_banots,
     isAdmin: user.is_admin,
   };
-}
-
-function verificationHash(email, code) {
-  return createHmac("sha256", process.env.JWT_SECRET)
-    .update(`${email}:${code}`)
-    .digest("hex");
-}
-
-function sameHash(left, right) {
-  const leftBuffer = Buffer.from(left, "hex");
-  const rightBuffer = Buffer.from(right, "hex");
-  return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
-}
-
-async function createEmailCode(email) {
-  const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
-  const codeHash = verificationHash(email, code);
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-  return { code, codeHash, expiresAt };
 }
 
 export async function register(req, res) {
@@ -62,143 +41,35 @@ export async function register(req, res) {
     const normalizedEmail = email.trim().toLowerCase();
     const normalizedNick = nick.trim();
     const existing = await db.query(
-      `SELECT id FROM lietotajs WHERE email = ? OR nick = ?
-       UNION ALL
-       SELECT id FROM email_registration_verification WHERE email = ? OR nick = ?
-       LIMIT 1`,
-      [normalizedEmail, normalizedNick, normalizedEmail, normalizedNick],
+      "SELECT id FROM lietotajs WHERE email = ? OR nick = ? LIMIT 1",
+      [normalizedEmail, normalizedNick],
     );
     if (existing.rows[0]) return res.status(409).json({ error: "Email or nickname is already in use." });
 
     const passwordHash = await bcrypt.hash(password, 12);
-    const { code, codeHash, expiresAt } = await createEmailCode(normalizedEmail);
-    await db.query(
-      `INSERT INTO email_registration_verification
-         (email, nick, age, contact, password_hash, code_hash, expires_at, last_sent_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+    const created = await db.query(
+      `INSERT INTO lietotajs (email, nick, age, kontakt_informacija, password_hash)
+       VALUES (?, ?, ?, ?, ?)`,
       [
         normalizedEmail,
         normalizedNick,
         Number(age),
         kontakt_informacija.trim() || null,
         passwordHash,
-        codeHash,
-        expiresAt,
       ],
     );
-    try {
-      await sendVerificationCode(normalizedEmail, code);
-    } catch (mailError) {
-      await db.query(
-        "DELETE FROM email_registration_verification WHERE email = ? AND code_hash = ?",
-        [normalizedEmail, codeHash],
-      );
-      if (mailError.message.startsWith("Email verification is not configured") || mailError.message.startsWith("SMTP_PORT")) {
-        return res.status(503).json({ error: "Email verification is temporarily unavailable. Please try again later." });
-      }
-      throw mailError;
-    }
-    return res.status(202).json({ verificationRequired: true, email: normalizedEmail });
-  } catch (error) {
-    if (error.code === "ER_DUP_ENTRY") return res.status(409).json({ error: "Email or nickname is already in use." });
-    throw error;
-  }
-}
-
-export async function verifyRegistration(req, res) {
-  const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
-  const code = req.body?.code;
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || typeof code !== "string" || !/^\d{6}$/.test(code)) {
-    return res.status(400).json({ error: "Enter a valid email address and 6-digit code." });
-  }
-
-  try {
-    const user = await withTransaction(async (client) => {
-      const { rows } = await client.query(
-        `SELECT email, nick, age, contact, password_hash, code_hash, attempts,
-                (expires_at > CURRENT_TIMESTAMP) AS is_valid
-         FROM email_registration_verification
-         WHERE email = ? FOR UPDATE`,
-        [email],
-      );
-      const pending = rows[0];
-      if (!pending) return { status: "missing" };
-      if (!pending.is_valid) {
-        await client.query("DELETE FROM email_registration_verification WHERE email = ?", [email]);
-        return { status: "expired" };
-      }
-      const codeMatches = sameHash(verificationHash(email, code), pending.code_hash);
-      if (!codeMatches) {
-        if (Number(pending.attempts) >= 4) {
-          await client.query("DELETE FROM email_registration_verification WHERE email = ?", [email]);
-          return { status: "locked" };
-        }
-        await client.query(
-          "UPDATE email_registration_verification SET attempts = attempts + 1 WHERE email = ?",
-          [email],
-        );
-        return { status: "invalid" };
-      }
-      if (!Number.isInteger(Number(pending.age)) || Number(pending.age) < 12 || Number(pending.age) > 99) {
-        await client.query("DELETE FROM email_registration_verification WHERE email = ?", [email]);
-        return { status: "age-required" };
-      }
-
-      const inserted = await client.query(
-        `INSERT INTO lietotajs (email, nick, age, kontakt_informacija, password_hash)
-         VALUES (?, ?, ?, ?, ?)`,
-        [pending.email, pending.nick, pending.age, pending.contact, pending.password_hash],
-      );
-      await client.query("DELETE FROM email_registration_verification WHERE email = ?", [email]);
-      const created = await client.query(
-        "SELECT id, email, nick, age, kontakt_informacija, avatar, ir_banots FROM lietotajs WHERE id = ?",
-        [inserted.insertId],
-      );
-      return { status: "verified", user: { ...created.rows[0], is_admin: false } };
-    });
-
-    if (user.status === "missing") return res.status(404).json({ error: "Verification request not found. Please register again." });
-    if (user.status === "expired") return res.status(400).json({ error: "Verification code expired. Request a new code." });
-    if (user.status === "locked") return res.status(429).json({ error: "Too many incorrect codes. Register again to receive a new code." });
-    if (user.status === "invalid") return res.status(400).json({ error: "Incorrect verification code." });
-    if (user.status === "age-required") return res.status(400).json({ error: "This registration predates age verification. Register again and enter an age from 12 to 99." });
-    return res.status(201).json({ token: createToken(user.user), user: publicUser(user.user) });
-  } catch (error) {
-    if (error.code === "ER_DUP_ENTRY") return res.status(409).json({ error: "Email or nickname is already in use." });
-    throw error;
-  }
-}
-
-export async function resendRegistrationCode(req, res) {
-  const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return res.status(400).json({ error: "Enter a valid email address." });
-  }
-
-  const { rows } = await db.query(
-    `SELECT email, (TIMESTAMPDIFF(SECOND, last_sent_at, CURRENT_TIMESTAMP) < 60) AS cooldown,
-            (expires_at > CURRENT_TIMESTAMP) AS is_valid
-     FROM email_registration_verification WHERE email = ?`,
-    [email],
-  );
-  const pending = rows[0];
-  if (!pending) return res.json({ sent: true });
-  if (pending.cooldown) return res.status(429).json({ error: "Please wait a minute before requesting another code." });
-
-  try {
-    const { code, codeHash, expiresAt } = await createEmailCode(email);
-    await sendVerificationCode(email, code);
-    await db.query(
-      `UPDATE email_registration_verification
-       SET code_hash = ?, expires_at = ?, last_sent_at = CURRENT_TIMESTAMP, attempts = 0
-       WHERE email = ?`,
-      [codeHash, expiresAt, email],
+    const { rows } = await db.query(
+      `SELECT u.id, u.email, u.nick, u.age, u.kontakt_informacija, u.avatar,
+              EXISTS (SELECT 1 FROM admin a WHERE a.id = u.id) AS is_admin,
+              EXISTS (SELECT 1 FROM lietotaja_bans b WHERE b.lietotajs_id = u.id
+                AND b.ir_aktivs = 'ir' AND (b.beigu_datums IS NULL OR b.beigu_datums > CURRENT_TIMESTAMP)) AS ir_banots
+       FROM lietotajs u WHERE u.id = ?`,
+      [created.insertId],
     );
-    return res.json({ sent: true });
+    const user = rows[0];
+    return res.status(201).json({ token: createToken(user), user: publicUser(user) });
   } catch (error) {
-    if (error.message.startsWith("Email verification is not configured") || error.message.startsWith("SMTP_PORT")) {
-      return res.status(503).json({ error: "Email verification is temporarily unavailable. Please try again later." });
-    }
+    if (error.code === "ER_DUP_ENTRY") return res.status(409).json({ error: "Email or nickname is already in use." });
     throw error;
   }
 }

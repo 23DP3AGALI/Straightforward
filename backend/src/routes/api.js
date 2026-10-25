@@ -19,12 +19,8 @@ const registrationLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: "Too many registration attempts. Please wait 15 minutes before trying again." },
 });
-const verificationLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: "draft-7", legacyHeaders: false });
-
 router.get("/health", (req, res) => res.json({ status: "ok" }));
 router.post("/auth/register", registrationLimiter, auth.register);
-router.post("/auth/verify-registration", verificationLimiter, auth.verifyRegistration);
-router.post("/auth/resend-registration-code", verificationLimiter, auth.resendRegistrationCode);
 router.post("/auth/login", loginLimiter, auth.login);
 router.get("/auth/me", requireAuth, auth.me);
 router.patch("/auth/me", requireAuth, auth.updateMe);
